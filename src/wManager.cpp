@@ -160,6 +160,7 @@ void init_WifiManager()
 #endif
     // Explicitly set WiFi mode
     WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
 
     if (!nvMem.loadConfig(&Settings))
     {
@@ -335,12 +336,22 @@ void init_WifiManager()
 
 //----------------- MAIN PROCESS WIFI MANAGER --------------
 int oldStatus = 0;
+unsigned long lastReconnectAttempt = 0;
 
 void wifiManagerProcess() {
 
     wm.process(); // avoid delays() in loop when non-blocking and other long running code
 
     int newStatus = WiFi.status();
+    if (newStatus == WL_CONNECTED) {
+        lastReconnectAttempt = 0;
+    } else if (newStatus != WL_IDLE_STATUS &&
+               (lastReconnectAttempt == 0 || millis() - lastReconnectAttempt >= 30000)) {
+        Serial.println("[WiFi] Disconnected; requesting reconnect");
+        WiFi.reconnect();
+        lastReconnectAttempt = millis();
+    }
+
     if (newStatus != oldStatus) {
         if (newStatus == WL_CONNECTED) {
             Serial.println("CONNECTED - Current ip: " + WiFi.localIP().toString());

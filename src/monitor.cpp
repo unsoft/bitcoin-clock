@@ -35,6 +35,7 @@ unsigned int bitcoin_price=0;
 String current_block = "------";
 String bitcoin_clock_price = "--";
 unsigned long mClockPriceUpdate = 0;
+constexpr unsigned long BITCOIN_CLOCK_PRICE_REFRESH_MS = 5000;
 global_data gData;
 pool_data pData;
 String poolAPIUrl;
@@ -173,7 +174,7 @@ unsigned long mBTCUpdate = 0;
 void updateBitcoinClockPrice(void)
 {
     if (WiFi.status() != WL_CONNECTED ||
-        (mClockPriceUpdate != 0 && millis() - mClockPriceUpdate < 10000))
+        (mClockPriceUpdate != 0 && millis() - mClockPriceUpdate < BITCOIN_CLOCK_PRICE_REFRESH_MS))
         return;
 
     mClockPriceUpdate = millis();
