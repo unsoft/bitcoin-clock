@@ -101,6 +101,15 @@ void drawSetupScreen()
   currentDisplayDriver->setupScreen();
 }
 
+void drawWifiConnectionFailedScreen()
+{
+#ifdef LILYGO_S3_T_DISPLAY
+  drawBitcoinClockWifiFailureScreen();
+#else
+  drawSetupScreen();
+#endif
+}
+
 // Select the default screen for the active display
 void selectDefaultScreen()
 {

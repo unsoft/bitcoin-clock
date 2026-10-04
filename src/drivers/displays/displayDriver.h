@@ -35,6 +35,7 @@ extern DisplayDriver ledDisplayDriver;
 extern DisplayDriver oled042DisplayDriver;
 extern DisplayDriver tDisplayDriver;
 extern DisplayDriver bitcoinClockS3DisplayDriver;
+void drawBitcoinClockWifiFailureScreen();
 extern DisplayDriver amoledDisplayDriver;
 extern DisplayDriver dongleDisplayDriver;
 extern DisplayDriver esp32_2432S028RDriver;

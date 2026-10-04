@@ -30,6 +30,7 @@ Bitcoin Clock 화면은 **LILYGO TTGO T-Display 1.14 (V1)** 과 **LILYGO T-Displ
 - 네트워크 이름: `BitcoinClock`
 - 기본 비밀번호: `BitcoinClock`
 - 설정 페이지에서 Wi-Fi 네트워크와 시간대를 지정합니다.
+- 저장된 Wi-Fi 연결을 3회 시도한 뒤 실패하면 화면에 안내가 표시되고 `BitcoinClock` 설정용 접속점이 열립니다. Wi-Fi 이름과 비밀번호는 `config.json`이 아니라 WiFiManager가 기기 내부에 저장합니다. `config.json`은 풀 설정과 시간대 등 앱 설정용입니다.
 
 ## 빌드
 

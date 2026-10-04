@@ -29,6 +29,7 @@ TSettings Settings;
 // Define WiFiManager Object
 WiFiManager wm;
 extern monitor_data mMonitor;
+bool wifiConnectionFailed = false;
 
 nvMemory nvMem;
 
@@ -111,7 +112,15 @@ void configModeCallback(WiFiManager* myWiFiManager)
 // Called when config mode launched
 {
     Serial.println("Entered Configuration Mode");
-    drawSetupScreen();
+    if (wifiConnectionFailed)
+    {
+        Serial.println("[WiFi] Saved network connection failed after retries; check saved WiFi settings.");
+        drawWifiConnectionFailedScreen();
+    }
+    else
+    {
+        drawSetupScreen();
+    }
     Serial.print("Config SSID: ");
     Serial.println(myWiFiManager->getConfigPortalSSID());
 
@@ -197,6 +206,7 @@ void init_WifiManager()
     wm.setConfigPortalBlocking(false); //Hacemos que el portal no bloquee el firmware
     wm.setConnectTimeout(40); // how long to try to connect for before continuing
     wm.setConfigPortalTimeout(180); // auto close configportal after n seconds
+    wm.setConnectRetries(3);
     // wm.setCaptivePortalEnable(false); // disable captive portal redirection
     // wm.setAPClientCheck(true); // avoid timeout if client connected to softap
     //wm.setTimeout(120);
@@ -261,6 +271,7 @@ void init_WifiManager()
         wm.setConfigPortalBlocking(true);
         wm.setEnableConfigPortal(true);
         // if (!wm.autoConnect(Settings.WifiSSID.c_str(), Settings.WifiPW.c_str()))
+        wifiConnectionFailed = true;
         if (!wm.autoConnect(apName, DEFAULT_WIFIPW))
         {
             Serial.println("Failed to connect to configured WIFI, and hit timeout");

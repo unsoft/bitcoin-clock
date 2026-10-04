@@ -236,11 +236,31 @@ void setupScreen()
   tft.drawString("BitcoinClock", SCREEN_WIDTH / 2, 116);
 }
 
+void drawWifiFailureScreen()
+{
+  tft.fillScreen(BLACK);
+  drawFrame();
+  tft.setTextColor(GOLD, BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextFont(4);
+  tft.drawString("BITCOIN CLOCK", SCREEN_WIDTH / 2, 52);
+  tft.setTextColor(WHITE, BLACK);
+  tft.setTextFont(2);
+  tft.drawString("WIFI CONNECTION FAILED", SCREEN_WIDTH / 2, 84);
+  tft.drawString("CHECK SAVED WIFI SETTINGS", SCREEN_WIDTH / 2, 106);
+  tft.drawString("CONNECT TO BitcoinClock", SCREEN_WIDTH / 2, 128);
+}
+
 void noRotationChange() {}
 void noAnimation(unsigned long) {}
 void noLedAction(unsigned long) {}
 
 CyclicScreenFunction pages[] = {drawBlockPage, drawPricePage, drawTimePage};
+}
+
+void drawBitcoinClockWifiFailureScreen()
+{
+  drawWifiFailureScreen();
 }
 
 void setBitcoinClockBacklightLevel(uint8_t level)
