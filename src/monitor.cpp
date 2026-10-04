@@ -32,20 +32,28 @@ bool invertColors = false;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
 unsigned int bitcoin_price=0;
-String current_block = "793261";
+String current_block = "------";
+String bitcoin_clock_price = "--";
+unsigned long mClockPriceUpdate = 0;
 global_data gData;
 pool_data pData;
 String poolAPIUrl;
+unsigned long mNtpAttempt = 0;
+unsigned long mTriggerUpdate = 0;
+unsigned long initialTime = 0;
 
 
 void setup_monitor(void){
     /******** TIME ZONE SETTING *****/
 
     timeClient.begin();
-    
-    // Adjust offset depending on your zone
-    // GMT +2 in seconds (zona horaria de Europa Central)
-    timeClient.setTimeOffset(3600 * Settings.Timezone);
+
+#ifdef LILYGO_S3_T_DISPLAY
+    constexpr int timezoneOffsetHours = 9;
+#else
+    const int timezoneOffsetHours = Settings.Timezone;
+#endif
+    timeClient.setTimeOffset(3600 * timezoneOffsetHours);
 
     Serial.println("TimeClient setup done");
 #ifdef SCREEN_WORKERS_ENABLE
@@ -121,15 +129,18 @@ void updateGlobalData(void){
 }
 
 unsigned long mHeightUpdate = 0;
+unsigned long mHeightAttempt = 0;
 
 String getBlockHeight(void){
     
-    if((mHeightUpdate == 0) || (millis() - mHeightUpdate > UPDATE_Height_min * 60 * 1000)){
+    if(((mHeightUpdate == 0) || (millis() - mHeightUpdate > UPDATE_Height_min * 60 * 1000)) &&
+       ((mHeightAttempt == 0) || (millis() - mHeightAttempt > 30000))){
     
         if (WiFi.status() != WL_CONNECTED) return current_block;
-            
+
+        mHeightAttempt = millis();
         HTTPClient http;
-        http.setTimeout(10000);
+        http.setTimeout(5000);
         try {
         http.begin(getHeightAPI);
         int httpCode = http.GET();
@@ -138,9 +149,14 @@ String getBlockHeight(void){
             String payload = http.getString();
             payload.trim();
 
-            current_block = payload;
-
-            mHeightUpdate = millis();
+            if (payload.length() > 0 && payload.toInt() > 0) {
+                current_block = payload;
+                mHeightUpdate = millis();
+            } else {
+                Serial.println("[CLOCK] Block-height API returned invalid data");
+            }
+        } else {
+            Serial.printf("[CLOCK] Block-height request failed: HTTP %d\n", httpCode);
         }        
         http.end();
         } catch(...) {
@@ -154,9 +170,43 @@ String getBlockHeight(void){
 
 unsigned long mBTCUpdate = 0;
 
+void updateBitcoinClockPrice(void)
+{
+    if (WiFi.status() != WL_CONNECTED ||
+        (mClockPriceUpdate != 0 && millis() - mClockPriceUpdate < 10000))
+        return;
+
+    mClockPriceUpdate = millis();
+    HTTPClient http;
+    http.setTimeout(10000);
+    http.begin(getBitcoinClockPriceAPI);
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        StaticJsonDocument<128> doc;
+        DeserializationError error = deserializeJson(doc, http.getString());
+        if (!error && doc["symbol"] == "BTCUSDT" && doc["price"].is<const char *>()) {
+            const float price = doc["price"].as<String>().toFloat();
+            if (price > 0.0f) {
+                bitcoin_clock_price = String(static_cast<uint32_t>(price + 0.5f));
+            } else {
+                Serial.println("[CLOCK] Binance returned a non-positive BTC price");
+            }
+        } else if (error) {
+            Serial.printf("[CLOCK] Binance price JSON error: %s\n", error.c_str());
+        } else {
+            Serial.println("[CLOCK] Binance response did not contain a BTCUSDT price");
+        }
+    } else {
+        Serial.printf("[CLOCK] Binance price request failed: HTTP %d\n", httpCode);
+    }
+
+    http.end();
+}
+
 String getBTCprice(void){
     
-    if((mBTCUpdate == 0) || (millis() - mBTCUpdate > UPDATE_BTC_min * 60 * 1000)){
+    if((mBTCUpdate == 0) || (millis() - mBTCUpdate > UPDATE_BTC_min * 10 * 1000)){
     
         if (WiFi.status() != WL_CONNECTED) {
             static char price_buffer[16];
@@ -178,8 +228,8 @@ String getBTCprice(void){
             StaticJsonDocument<1024> doc;
             deserializeJson(doc, payload);
           
-            if (doc.containsKey("bitcoin") && doc["bitcoin"].containsKey("usd")) {
-                bitcoin_price = doc["bitcoin"]["usd"];
+            if (doc.containsKey("bitcoin") && doc["bitcoin"].containsKey("usdt")) {
+              bitcoin_price = doc["bitcoin"]["usdt"];
             }
 
             doc.clear();
@@ -199,21 +249,29 @@ String getBTCprice(void){
   return String(price_buffer);
 }
 
-unsigned long mTriggerUpdate = 0;
 unsigned long initialMillis = millis();
-unsigned long initialTime = 0;
 unsigned long mPoolUpdate = 0;
 
 void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigned long* currentSeconds){
   
   //Check if need an NTP call to check current time
-  if((mTriggerUpdate == 0) || (millis() - mTriggerUpdate > UPDATE_PERIOD_h * 60 * 60 * 1000)){ //60 sec. * 60 min * 1000ms
-    if(WiFi.status() == WL_CONNECTED) {
-        if(timeClient.update()) mTriggerUpdate = millis(); //NTP call to get current time
-        initialTime = timeClient.getEpochTime(); // Guarda la hora inicial (en segundos desde 1970)
-        Serial.print("TimeClient NTPupdateTime ");
+  const unsigned long now = millis();
+  const bool firstSyncPending = mTriggerUpdate == 0;
+  const bool resyncDue = !firstSyncPending &&
+                         now - mTriggerUpdate > UPDATE_PERIOD_h * 60UL * 60UL * 1000UL;
+  const bool retryDue = mNtpAttempt == 0 || now - mNtpAttempt >= 30000;
+
+  if ((firstSyncPending || resyncDue) && retryDue && WiFi.status() == WL_CONNECTED) {
+      mNtpAttempt = now;
+      const bool timeUpdated = firstSyncPending ? timeClient.forceUpdate() : timeClient.update();
+      if (timeUpdated) {
+          mTriggerUpdate = millis();
+          initialTime = timeClient.getEpochTime();
+          Serial.println("[CLOCK] NTP time synchronized");
+      } else {
+          Serial.println("[CLOCK] NTP time synchronization failed; retrying in 30 seconds");
+      }
     }
-  }
 
   unsigned long elapsedTime = (millis() - mTriggerUpdate) / 1000; // Tiempo transcurrido en segundos
   unsigned long currentTime = initialTime + elapsedTime; // La hora actual
@@ -245,12 +303,23 @@ String getDate(){
 String getTime(void){
   unsigned long currentHours, currentMinutes, currentSeconds;
   getTime(&currentHours, &currentMinutes, &currentSeconds);
+  if (mTriggerUpdate == 0) return "--:--";
 
   char LocalHour[10];
   sprintf(LocalHour, "%02d:%02d", currentHours, currentMinutes);
   
   String mystring(LocalHour);
   return LocalHour;
+}
+
+bitcoin_clock_data getBitcoinClockData(void)
+{
+  bitcoin_clock_data data;
+  data.blockHeight = getBlockHeight();
+  updateBitcoinClockPrice();
+  data.btcPrice = bitcoin_clock_price;
+  data.currentTime = getTime();
+  return data;
 }
 
 enum EHashRateScale

@@ -56,9 +56,9 @@ bool tx_mining_subscribe(WiFiClient& client, mining_subscribe& mSubscribe)
     // Subscribe
     id = 1; //Initialize id messages
     #ifndef HAN
-    sprintf(payload, "{\"id\": %u, \"method\": \"mining.subscribe\", \"params\": [\"NerdMinerV2/%s\"]}\n", id, CURRENT_VERSION);
+    sprintf(payload, "{\"id\": %u, \"method\": \"mining.subscribe\", \"params\": [\"BitcoinClock/%s\"]}\n", id, CURRENT_VERSION);
     #else
-    sprintf(payload, "{\"id\": %u, \"method\": \"mining.subscribe\", \"params\": [\"HAN_SOLOminer/%s\"]}\n", id, CURRENT_VERSION);
+    sprintf(payload, "{\"id\": %u, \"method\": \"mining.subscribe\", \"params\": [\"BitcoinClock/%s\"]}\n", id, CURRENT_VERSION);
     #endif
     
     Serial.printf("[WORKER] ==> Mining subscribe\n");

@@ -16,7 +16,8 @@
 
 //#define getBTCAPI "https://api.coindesk.com/v1/bpi/currentprice.json" -- doesn't work anymore
 //#define getBTCAPI "https://api.blockchain.com/v3/exchange/tickers/BTC-USDT" -- updates infrequently
-#define getBTCAPI "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
+#define getBTCAPI "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usdt"
+#define getBitcoinClockPriceAPI "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
 
 #define UPDATE_BTC_min   1
 
@@ -90,6 +91,12 @@ typedef struct {
 }clock_data;
 
 typedef struct {
+  String blockHeight;
+  String btcPrice;
+  String currentTime;
+}bitcoin_clock_data;
+
+typedef struct {
   String currentHashRate;
   String valids;
   unsigned long currentHours;
@@ -124,9 +131,11 @@ typedef struct{
 }pool_data;
 
 void setup_monitor(void);
+void runMonitor(void *name);
 
 mining_data getMiningData(unsigned long mElapsed);
 clock_data getClockData(unsigned long mElapsed);
+bitcoin_clock_data getBitcoinClockData(void);
 coin_data getCoinData(unsigned long mElapsed);
 pool_data getPoolData(void);
 

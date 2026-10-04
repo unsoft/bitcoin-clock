@@ -203,46 +203,10 @@ void init_WifiManager()
 
     // Custom elements
 
-    // Text box (String) - 80 characters maximum
-    WiFiManagerParameter pool_text_box("Poolurl", "Pool url", Settings.PoolAddress.c_str(), 80);
-
-    // Need to convert numerical input to string to display the default value.
-    char convertedValue[6];
-    sprintf(convertedValue, "%d", Settings.PoolPort);
-
-    // Text box (Number) - 7 characters maximum
-    WiFiManagerParameter port_text_box_num("Poolport", "Pool port", convertedValue, 7);
-
-    // Text box (String) - 80 characters maximum
-    //WiFiManagerParameter password_text_box("Poolpassword", "Pool password (Optional)", Settings.PoolPassword, 80);
-
-    // Text box (String) - 80 characters maximum
-    WiFiManagerParameter addr_text_box("btcAddress", "Your BTC address", Settings.BtcWallet, 80);
-
-  // Text box (Number) - 2 characters maximum
-  char charZone[6];
-  sprintf(charZone, "%d", Settings.Timezone);
-  WiFiManagerParameter time_text_box_num("TimeZone", "TimeZone fromUTC (-12/+12)", charZone, 3);
-
-  WiFiManagerParameter features_html("<hr><br><label style=\"font-weight: bold;margin-bottom: 25px;display: inline-block;\">Features</label>");
-
-  char checkboxParams[24] = "type=\"checkbox\"";
-  if (Settings.saveStats)
-  {
-    strcat(checkboxParams, " checked");
-  }
-  WiFiManagerParameter save_stats_to_nvs("SaveStatsToNVS", "Save mining statistics to flash memory.", "T", 2, checkboxParams, WFM_LABEL_AFTER);
-  // Text box (String) - 80 characters maximum
-  WiFiManagerParameter password_text_box("Poolpassword - Optional", "Pool password", Settings.PoolPassword, 80);
-
-  // Add all defined parameters
-  wm.addParameter(&pool_text_box);
-  wm.addParameter(&port_text_box_num);
-  wm.addParameter(&password_text_box);
-  wm.addParameter(&addr_text_box);
-  wm.addParameter(&time_text_box_num);
-  wm.addParameter(&features_html);
-  wm.addParameter(&save_stats_to_nvs);
+        char charZone[6];
+        sprintf(charZone, "%d", Settings.Timezone);
+        WiFiManagerParameter time_text_box_num("TimeZone", "Time zone from UTC (-12/+12)", charZone, 3);
+        wm.addParameter(&time_text_box_num);
   #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
   char checkboxParams2[24] = "type=\"checkbox\"";
   if (Settings.invertColors)
@@ -274,13 +238,7 @@ void init_WifiManager()
         {
             //Could be break forced after edditing, so save new config
             Serial.println("failed to connect and hit timeout");
-            Settings.PoolAddress = pool_text_box.getValue();
-            Settings.PoolPort = atoi(port_text_box_num.getValue());
-            strncpy(Settings.PoolPassword, password_text_box.getValue(), sizeof(Settings.PoolPassword));
-            strncpy(Settings.BtcWallet, addr_text_box.getValue(), sizeof(Settings.BtcWallet));
             Settings.Timezone = atoi(time_text_box_num.getValue());
-            //Serial.println(save_stats_to_nvs.getValue());
-            Settings.saveStats = (strncmp(save_stats_to_nvs.getValue(), "T", 1) == 0);
             #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
                 Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
             #endif
@@ -307,13 +265,7 @@ void init_WifiManager()
             Serial.println("Failed to connect to configured WIFI, and hit timeout");
             if (shouldSaveConfig) {
                 // Save new config            
-                Settings.PoolAddress = pool_text_box.getValue();
-                Settings.PoolPort = atoi(port_text_box_num.getValue());
-                strncpy(Settings.PoolPassword, password_text_box.getValue(), sizeof(Settings.PoolPassword));
-                strncpy(Settings.BtcWallet, addr_text_box.getValue(), sizeof(Settings.BtcWallet));
                 Settings.Timezone = atoi(time_text_box_num.getValue());
-                // Serial.println(save_stats_to_nvs.getValue());
-                Settings.saveStats = (strncmp(save_stats_to_nvs.getValue(), "T", 1) == 0);
                 #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
                 Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
                 #endif
@@ -338,28 +290,6 @@ void init_WifiManager()
 
         // Lets deal with the user config values
 
-        // Copy the string value
-        Settings.PoolAddress = pool_text_box.getValue();
-        //strncpy(Settings.PoolAddress, pool_text_box.getValue(), sizeof(Settings.PoolAddress));
-        Serial.print("PoolString: ");
-        Serial.println(Settings.PoolAddress);
-
-        //Convert the number value
-        Settings.PoolPort = atoi(port_text_box_num.getValue());
-        Serial.print("portNumber: ");
-        Serial.println(Settings.PoolPort);
-
-        // Copy the string value
-        strncpy(Settings.PoolPassword, password_text_box.getValue(), sizeof(Settings.PoolPassword));
-        Serial.print("poolPassword: ");
-        Serial.println(Settings.PoolPassword);
-
-        // Copy the string value
-        strncpy(Settings.BtcWallet, addr_text_box.getValue(), sizeof(Settings.BtcWallet));
-        Serial.print("btcString: ");
-        Serial.println(Settings.BtcWallet);
-
-        //Convert the number value
         Settings.Timezone = atoi(time_text_box_num.getValue());
         Serial.print("TimeZone fromUTC: ");
         Serial.println(Settings.Timezone);
@@ -380,28 +310,6 @@ void init_WifiManager()
 
     // Lets deal with the user config values
 
-    // Copy the string value
-    Settings.PoolAddress = pool_text_box.getValue();
-    //strncpy(Settings.PoolAddress, pool_text_box.getValue(), sizeof(Settings.PoolAddress));
-    Serial.print("PoolString: ");
-    Serial.println(Settings.PoolAddress);
-
-    //Convert the number value
-    Settings.PoolPort = atoi(port_text_box_num.getValue());
-    Serial.print("portNumber: ");
-    Serial.println(Settings.PoolPort);
-
-    // Copy the string value
-    strncpy(Settings.PoolPassword, password_text_box.getValue(), sizeof(Settings.PoolPassword));
-    Serial.print("poolPassword: ");
-    Serial.println(Settings.PoolPassword);
-
-    // Copy the string value
-    strncpy(Settings.BtcWallet, addr_text_box.getValue(), sizeof(Settings.BtcWallet));
-    Serial.print("btcString: ");
-    Serial.println(Settings.BtcWallet);
-
-    //Convert the number value
     Settings.Timezone = atoi(time_text_box_num.getValue());
     Serial.print("TimeZone fromUTC: ");
     Serial.println(Settings.Timezone);

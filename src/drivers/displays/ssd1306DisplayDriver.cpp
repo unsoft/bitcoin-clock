@@ -41,7 +41,7 @@ void ssd1306Display_Screen1(unsigned long mElapsed) {
 
   // Header
   u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.drawStr(0, 10, "NERDMINER v2");
+  u8g2.drawStr(0, 10, "BITCOIN CLOCK");
   u8g2.drawHLine(0, 12, 128);
 
   // Hashrate (big)
@@ -90,8 +90,8 @@ void ssd1306Display_LoadingScreen(void) {
   Serial.println("Loading...");
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_helvB18_tf);
-  u8g2.drawStr(10, 30, "NERD");
-  u8g2.drawStr(10, 55, "MINER");
+  u8g2.drawStr(10, 30, "BITCOIN");
+  u8g2.drawStr(10, 55, "CLOCK");
   u8g2.sendBuffer();
 }
 
@@ -101,8 +101,8 @@ void ssd1306Display_SetupScreen(void) {
   u8g2.setFont(u8g2_font_6x10_tf);
   u8g2.drawStr(20, 20, "SETUP MODE");
   u8g2.drawStr(5, 35, "Connect to WiFi:");
-  u8g2.drawStr(5, 48, "NerdMinerAP");
-  u8g2.drawStr(5, 61, "MineYourCoins");
+  u8g2.drawStr(5, 48, "BitcoinClock");
+  u8g2.drawStr(5, 61, "BitcoinClock");
   u8g2.sendBuffer();
 }
 

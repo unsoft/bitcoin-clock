@@ -20,7 +20,9 @@ DisplayDriver *currentDisplayDriver = &ledDisplayDriver;
 DisplayDriver *currentDisplayDriver = &oled042DisplayDriver;
 #endif
 
-#ifdef T_DISPLAY
+#if defined(LILYGO_S3_T_DISPLAY)
+DisplayDriver *currentDisplayDriver = &bitcoinClockS3DisplayDriver;
+#elif defined(T_DISPLAY)
 DisplayDriver *currentDisplayDriver = &tDisplayDriver;
 #endif
 

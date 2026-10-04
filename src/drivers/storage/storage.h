@@ -7,11 +7,11 @@
 
 // default settings
 #ifndef HAN
-#define DEFAULT_SSID		"NerdMinerAP"
+#define DEFAULT_SSID		"BitcoinClock"
 #else
-#define DEFAULT_SSID		"HanSoloAP"
+#define DEFAULT_SSID		"BitcoinClock"
 #endif
-#define DEFAULT_WIFIPW		"MineYourCoins"
+#define DEFAULT_WIFIPW		"BitcoinClock"
 #define DEFAULT_POOLURL		"public-pool.io"
 #define DEFAULT_POOLPASS	"x"
 #define DEFAULT_WALLETID	"yourBtcAddress"

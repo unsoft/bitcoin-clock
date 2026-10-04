@@ -1204,68 +1204,19 @@ void resetStat() {
 
 void runMonitor(void *name)
 {
-
   Serial.println("[MONITOR] started");
-  restoreStat();
-
-  unsigned long mLastCheck = 0;
-
   resetToFirstScreen();
-
   unsigned long frame = 0;
-
-  uint32_t seconds_elapsed = 0;
-
-  totalKHashes = (Mhashes * 1000) + hashes / 1000;
-  uint32_t last_update_millis = millis();
-  uint32_t uptime_frac = 0;
+  uint32_t lastDrawMillis = millis();
 
   while (1)
   {
-    uint32_t now_millis = millis();
-    if (now_millis < last_update_millis)
-      now_millis = last_update_millis;
-    
-    uint32_t mElapsed = now_millis - mLastCheck;
+    uint32_t nowMillis = millis();
+    uint32_t mElapsed = nowMillis - lastDrawMillis;
     if (mElapsed >= 1000)
-    { 
-      mLastCheck = now_millis;
-      last_update_millis = now_millis;
-      unsigned long currentKHashes = (Mhashes * 1000) + hashes / 1000;
-      elapsedKHs = currentKHashes - totalKHashes;
-      totalKHashes = currentKHashes;
-
-      uptime_frac += mElapsed;
-      while (uptime_frac >= 1000)
-      {
-        uptime_frac -= 1000;
-        upTime ++;
-      }
-
+    {
+      lastDrawMillis = nowMillis;
       drawCurrentScreen(mElapsed);
-
-      // Monitor state when hashrate is 0.0
-      if (elapsedKHs == 0)
-      {
-        Serial.printf(">>> [i] Miner: newJob>%s / inRun>%s) - Client: connected>%s / subscribed>%s / wificonnected>%s\n",
-            "true",//(1) ? "true" : "false",
-            isMinerSuscribed ? "true" : "false",
-            client.connected() ? "true" : "false", isMinerSuscribed ? "true" : "false", WiFi.status() == WL_CONNECTED ? "true" : "false");
-      }
-
-      #ifdef DEBUG_MEMORY
-      Serial.printf("### [Total Heap / Free heap / Min free heap]: %d / %d / %d \n", ESP.getHeapSize(), ESP.getFreeHeap(), ESP.getMinFreeHeap());
-      Serial.printf("### Max stack usage: %d\n", uxTaskGetStackHighWaterMark(NULL));
-      #endif
-
-      seconds_elapsed++;
-
-      if(seconds_elapsed % (saveIntervals[currentIntervalIndex]) == 0){
-        saveStat();
-        seconds_elapsed = 0;
-        if(currentIntervalIndex < saveIntervalsSize - 1)
-          currentIntervalIndex++;
-      }    
     }
     animateCurrentScreen(frame);
     doLedStuff(frame);

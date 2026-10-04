@@ -16,8 +16,6 @@
 
 #define TARGET_BUFFER_SIZE 64
 
-void runMonitor(void *name);
-
 void runStratumWorker(void *name);
 void runMiner(void *name);
 

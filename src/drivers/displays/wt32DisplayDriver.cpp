@@ -345,8 +345,8 @@ void wt32Display_LoadingScreen(void)
   Serial.println("Initializing...");
   Serial.print("Firmware Version: ");
   Serial.println(AUTO_VERSION);
-  lv_label_set_text(ui_lblssid, "HanSoloAP");
-  lv_label_set_text(ui_lblpassword, "MineYourCoins");
+  lv_label_set_text(ui_lblssid, "BitcoinClock");
+  lv_label_set_text(ui_lblpassword, "BitcoinClock");
   lv_label_set_text(ui_lblversion, AUTO_VERSION);
   lv_label_set_text(ui_lblversion2, AUTO_VERSION);
 

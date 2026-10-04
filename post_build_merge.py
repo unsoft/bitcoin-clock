@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Post-build script for NerdMiner_v2 firmware merging
+Post-build script for Bitcoin Clock firmware merging
 Ported from merge_firmware_universal.js - detects ESP32 type from bootloader signature
 Generates factory (0x0) and update (0x10000) files automatically after build
 
@@ -89,19 +89,8 @@ def get_memory_layout(esp_type):
         }
 
 def get_firmware_version():
-    """Get firmware version from git"""
-    try:
-        result = subprocess.run(["git", "describe", "--tags", "--dirty"], 
-                              stdout=subprocess.PIPE, text=True, 
-                              cwd=env.subst("$PROJECT_DIR"))
-        if result.returncode == 0:
-            version = result.stdout.strip()
-            # Clean up version string
-            version = version.replace('Release', '').replace('release', '')
-            return version
-    except:
-        pass
-    return "dev"
+    """Get the Bitcoin Clock firmware version."""
+    return "V1"
 
 def create_merged_firmware(source, target, env):
     """Main function called after firmware build"""

@@ -24,20 +24,16 @@ void m5stackDisplay_Init(void)
   M5.Lcd.setCursor(0,0);
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.println("");
-  M5.Lcd.println("   Han ANother SOLOminer");
+  M5.Lcd.println("    BITCOIN CLOCK");
   M5.Lcd.drawLine(0,25,320,25,GREENYELLOW);
   M5.Lcd.fillRect(0,30,320,20,WHITE);
   M5.Lcd.println("");
   M5.Lcd.println("");
-  M5.Lcd.println("HAN SOLO is a solo miner");
-  M5.Lcd.println(" on a ESP32."); M5.Lcd.setTextColor(RED);
-  M5.Lcd.println("WARNING: you may have to wait");
-  M5.Lcd.println(" longer than the current age");
-  M5.Lcd.println(" of the universe to find a ");
-  M5.Lcd.println(" valid block."); M5.Lcd.setTextColor(WHITE);
+  M5.Lcd.println(" Bitcoin block clock");
+  M5.Lcd.println(" on an ESP32.");
   M5.Lcd.drawLine(0,200,320,200,GREENYELLOW);
-  M5.Lcd.println("Connect via wifi to HanSoloAP");
-  M5.Lcd.println(" with password MineYourCoins");
+  M5.Lcd.println("Connect via WiFi to BitcoinClock");
+  M5.Lcd.println("Password: BitcoinClock");
 }
 
 void m5stackDisplay_AlternateScreenState(void)
