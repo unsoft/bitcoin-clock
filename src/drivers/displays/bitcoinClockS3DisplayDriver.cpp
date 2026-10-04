@@ -18,9 +18,12 @@ constexpr int TILE_HEIGHT = 92;
 constexpr int TILE_GAP = 3;
 constexpr int SIDE_MARGIN = 8;
 constexpr int VALUE_TILE_COUNT = 7;
+constexpr uint8_t BACKLIGHT_PWM_CHANNEL = 7;
+constexpr uint8_t BACKLIGHT_LEVELS[] = {0, 64, 128, 192, 255};
+constexpr uint8_t BACKLIGHT_LEVEL_COUNT = sizeof(BACKLIGHT_LEVELS) / sizeof(BACKLIGHT_LEVELS[0]);
 
 TFT_eSPI tft;
-bool backlightOn = true;
+uint8_t backlightLevel = BACKLIGHT_LEVEL_COUNT - 1;
 int renderedPage = -1;
 String renderedValue;
 bool renderedLabelVisible = false;
@@ -195,16 +198,19 @@ void initDisplay()
   tft.init();
   tft.setRotation(1);
   tft.setSwapBytes(true);
-  pinMode(TFT_BL, OUTPUT);
-  digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
+  ledcSetup(BACKLIGHT_PWM_CHANNEL, 5000, 8);
+  ledcAttachPin(TFT_BL, BACKLIGHT_PWM_CHANNEL);
+  ledcWrite(BACKLIGHT_PWM_CHANNEL, BACKLIGHT_LEVELS[backlightLevel]);
   tft.fillScreen(BLACK);
   drawFrame();
 }
 
-void toggleBacklight()
+void cycleBacklightBrightness()
 {
-  backlightOn = !backlightOn;
-  digitalWrite(TFT_BL, backlightOn ? TFT_BACKLIGHT_ON : !TFT_BACKLIGHT_ON);
+  backlightLevel = (backlightLevel + 1) % BACKLIGHT_LEVEL_COUNT;
+  ledcWrite(BACKLIGHT_PWM_CHANNEL, BACKLIGHT_LEVELS[backlightLevel]);
+  Serial.printf("[DISPLAY] Backlight brightness: %u%%\n",
+                static_cast<unsigned int>(BACKLIGHT_LEVELS[backlightLevel]) * 100 / 255);
 }
 
 void loadingScreen()
@@ -240,7 +246,7 @@ CyclicScreenFunction pages[] = {drawBlockPage, drawPricePage, drawTimePage};
 
 DisplayDriver bitcoinClockS3DisplayDriver = {
     initDisplay,
-    toggleBacklight,
+    cycleBacklightBrightness,
     noRotationChange,
     loadingScreen,
     setupScreen,
