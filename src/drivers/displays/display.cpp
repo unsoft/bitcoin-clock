@@ -101,10 +101,14 @@ void drawSetupScreen()
   currentDisplayDriver->setupScreen();
 }
 
-// Reset the current cyclic screen to the first one
-void resetToFirstScreen()
+// Select the default screen for the active display
+void selectDefaultScreen()
 {
+#ifdef LILYGO_S3_T_DISPLAY
+  currentDisplayDriver->current_cyclic_screen = 1;
+#else
   currentDisplayDriver->current_cyclic_screen = 0;
+#endif
 }
 
 // Switches to the next cyclic screen without drawing it

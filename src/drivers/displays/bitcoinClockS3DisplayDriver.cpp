@@ -5,6 +5,8 @@
 #include <TFT_eSPI.h>
 #include "monitor.h"
 
+void setBitcoinClockBacklightLevel(uint8_t level);
+
 namespace
 {
 constexpr int SCREEN_WIDTH = 320;
@@ -207,10 +209,7 @@ void initDisplay()
 
 void cycleBacklightBrightness()
 {
-  backlightLevel = (backlightLevel + 1) % BACKLIGHT_LEVEL_COUNT;
-  ledcWrite(BACKLIGHT_PWM_CHANNEL, BACKLIGHT_LEVELS[backlightLevel]);
-  Serial.printf("[DISPLAY] Backlight brightness: %u%%\n",
-                static_cast<unsigned int>(BACKLIGHT_LEVELS[backlightLevel]) * 100 / 255);
+  setBitcoinClockBacklightLevel((backlightLevel + 1) % BACKLIGHT_LEVEL_COUNT);
 }
 
 void loadingScreen()
@@ -242,6 +241,17 @@ void noAnimation(unsigned long) {}
 void noLedAction(unsigned long) {}
 
 CyclicScreenFunction pages[] = {drawBlockPage, drawPricePage, drawTimePage};
+}
+
+void setBitcoinClockBacklightLevel(uint8_t level)
+{
+  if (level >= BACKLIGHT_LEVEL_COUNT)
+    return;
+
+  backlightLevel = level;
+  ledcWrite(BACKLIGHT_PWM_CHANNEL, BACKLIGHT_LEVELS[backlightLevel]);
+  Serial.printf("[DISPLAY] Backlight brightness: %u%%\n",
+                static_cast<unsigned int>(BACKLIGHT_LEVELS[backlightLevel]) * 100 / 255);
 }
 
 DisplayDriver bitcoinClockS3DisplayDriver = {

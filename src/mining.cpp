@@ -1205,7 +1205,7 @@ void resetStat() {
 void runMonitor(void *name)
 {
   Serial.println("[MONITOR] started");
-  resetToFirstScreen();
+  selectDefaultScreen();
   unsigned long frame = 0;
   uint32_t lastDrawMillis = millis();
 

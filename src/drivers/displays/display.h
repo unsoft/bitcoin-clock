@@ -9,7 +9,7 @@ void initDisplay();
 void alternateScreenState();
 void alternateScreenRotation();
 void switchToNextScreen();
-void resetToFirstScreen();
+void selectDefaultScreen();
 void drawLoadingScreen();
 void drawSetupScreen();
 void drawCurrentScreen(unsigned long mElapsed);

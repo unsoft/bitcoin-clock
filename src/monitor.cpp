@@ -4,6 +4,7 @@
 #include "HTTPClient.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <time.h>
 #include <list>
 #include "mining.h"
 #include "utils.h"
@@ -24,6 +25,10 @@ extern uint32_t valids; // increased if blockhash <= targethalfshares
 extern double best_diff; // track best diff
 
 extern monitor_data mMonitor;
+
+#ifdef LILYGO_S3_T_DISPLAY
+extern void setBitcoinClockBacklightLevel(uint8_t level);
+#endif
 
 //from saved config
 extern TSettings Settings; 
@@ -276,6 +281,55 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
 
   unsigned long elapsedTime = (millis() - mTriggerUpdate) / 1000; // Tiempo transcurrido en segundos
   unsigned long currentTime = initialTime + elapsedTime; // La hora actual
+
+#ifdef LILYGO_S3_T_DISPLAY
+  if (mTriggerUpdate != 0)
+  {
+    static bool brightnessScheduleInitialized = false;
+    static int64_t lastProcessedMinute = -1;
+    const int64_t currentMinute = currentTime / 60;
+
+    if (!brightnessScheduleInitialized || currentMinute != lastProcessedMinute)
+    {
+      time_t localEpoch = static_cast<time_t>(currentTime);
+      struct tm localTime;
+      if (gmtime_r(&localEpoch, &localTime) != nullptr)
+      {
+        const int minuteOfDay = localTime.tm_hour * 60 + localTime.tm_min;
+        const bool weekend = localTime.tm_wday == 0 || localTime.tm_wday == 6;
+        uint8_t brightnessLevel;
+
+        if (minuteOfDay < 330)
+          brightnessLevel = 0;
+        else if (minuteOfDay < 480)
+          brightnessLevel = 1;
+        else if (!weekend && minuteOfDay < 660)
+          brightnessLevel = 2;
+        else if (!weekend && minuteOfDay < 1020)
+          brightnessLevel = 0;
+        else
+          brightnessLevel = 2;
+
+        const bool isScheduleStart = minuteOfDay == 0 ||
+                                     minuteOfDay == 330 ||
+                                     minuteOfDay == 480 ||
+                                     (!weekend && (minuteOfDay == 660 || minuteOfDay == 1020));
+        if (!brightnessScheduleInitialized || isScheduleStart)
+        {
+          setBitcoinClockBacklightLevel(brightnessLevel);
+          Serial.printf("[DISPLAY] Automatic brightness: %u%% (%s %02d:%02d)\n",
+                        brightnessLevel == 0 ? 0 : brightnessLevel == 1 ? 25 : 50,
+                        weekend ? "weekend" : "weekday",
+                        localTime.tm_hour,
+                        localTime.tm_min);
+        }
+
+        brightnessScheduleInitialized = true;
+        lastProcessedMinute = currentMinute;
+      }
+    }
+  }
+#endif
 
   // convierte la hora actual en horas, minutos y segundos
   *currentHours = currentTime % 86400 / 3600;
