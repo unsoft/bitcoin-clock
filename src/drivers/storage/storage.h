@@ -17,6 +17,8 @@
 #define DEFAULT_WALLETID	"yourBtcAddress"
 #define DEFAULT_POOLPORT	3333
 #define DEFAULT_TIMEZONE	2
+#define DEFAULT_TIMEZONE_NAME "Asia/Seoul"
+#define DEFAULT_BRIGHTNESS_SCHEDULE_ENABLED true
 #define DEFAULT_SAVESTATS	false
 #define DEFAULT_INVERTCOLORS	false
 #define DEFAULT_BRIGHTNESS	250
@@ -42,6 +44,8 @@
 #define JSON_SPIFFS_KEY_POOLPASS	"poolPassword"
 #define JSON_SPIFFS_KEY_WALLETID	"btcString"
 #define JSON_SPIFFS_KEY_TIMEZONE	"gmtZone"
+#define JSON_SPIFFS_KEY_TIMEZONE_NAME "timeZoneName"
+#define JSON_SPIFFS_KEY_BRIGHTNESS_SCHEDULE "brightnessSchedule"
 #define JSON_SPIFFS_KEY_STATS2NV	"saveStatsToNVS"
 #define JSON_SPIFFS_KEY_INVCOLOR	"invertColors"
 #define JSON_SPIFFS_KEY_BRIGHTNESS	"Brightness"
@@ -56,6 +60,8 @@ struct TSettings
 	char PoolPassword[80]{ DEFAULT_POOLPASS };
 	int PoolPort{ DEFAULT_POOLPORT };
 	int Timezone{ DEFAULT_TIMEZONE };
+	String TimezoneName{ DEFAULT_TIMEZONE_NAME };
+	bool BrightnessScheduleEnabled{ DEFAULT_BRIGHTNESS_SCHEDULE_ENABLED };
 	bool saveStats{ DEFAULT_SAVESTATS };
 	bool invertColors{ DEFAULT_INVERTCOLORS };
 	int Brightness{ DEFAULT_BRIGHTNESS };

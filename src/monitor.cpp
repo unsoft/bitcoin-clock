@@ -11,6 +11,7 @@
 #include "monitor.h"
 #include "drivers/storage/storage.h"
 #include "drivers/devices/device.h"
+#include "timezoneConfig.h"
 
 extern uint32_t templates;
 extern uint32_t hashes;
@@ -52,16 +53,29 @@ unsigned long initialTime = 0;
 
 
 void setup_monitor(void){
-    /******** TIME ZONE SETTING *****/
-
+#ifdef LILYGO_S3_T_DISPLAY
+    const BitcoinClockTimeZone* zone =
+        findBitcoinClockTimeZone(Settings.TimezoneName.c_str());
+    if (zone == nullptr)
+    {
+        Serial.printf("[TIME] Unsupported saved time zone '%s'; using %s\n",
+                      Settings.TimezoneName.c_str(),
+                      DEFAULT_TIMEZONE_NAME);
+        Settings.TimezoneName = DEFAULT_TIMEZONE_NAME;
+        zone = findBitcoinClockTimeZone(Settings.TimezoneName.c_str());
+    }
+    setenv("TZ", zone->posixRule, 1);
+    tzset();
+    Serial.printf("[TIME] Local time zone: %s (%s)\n", zone->name, zone->posixRule);
+#endif
     timeClient.begin();
 
-#ifdef LILYGO_S3_T_DISPLAY
-    constexpr int timezoneOffsetHours = 9;
-#else
+#ifndef LILYGO_S3_T_DISPLAY
     const int timezoneOffsetHours = Settings.Timezone;
-#endif
     timeClient.setTimeOffset(3600 * timezoneOffsetHours);
+#else
+    timeClient.setTimeOffset(0);
+#endif
 
     Serial.println("TimeClient setup done");
 #ifdef SCREEN_WORKERS_ENABLE
@@ -330,17 +344,22 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
   unsigned long currentTime = initialTime + elapsedTime; // La hora actual
 
 #ifdef LILYGO_S3_T_DISPLAY
-  if (mTriggerUpdate != 0)
+  static bool brightnessScheduleInitialized = false;
+  static int64_t lastProcessedMinute = -1;
+  if (!Settings.BrightnessScheduleEnabled)
   {
-    static bool brightnessScheduleInitialized = false;
-    static int64_t lastProcessedMinute = -1;
+    brightnessScheduleInitialized = false;
+    lastProcessedMinute = -1;
+  }
+  else if (mTriggerUpdate != 0)
+  {
     const int64_t currentMinute = currentTime / 60;
 
     if (!brightnessScheduleInitialized || currentMinute != lastProcessedMinute)
     {
       time_t localEpoch = static_cast<time_t>(currentTime);
       struct tm localTime;
-      if (gmtime_r(&localEpoch, &localTime) != nullptr)
+      if (localtime_r(&localEpoch, &localTime) != nullptr)
       {
         const int minuteOfDay = localTime.tm_hour * 60 + localTime.tm_min;
         const bool weekend = localTime.tm_wday == 0 || localTime.tm_wday == 6;
@@ -378,10 +397,25 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
   }
 #endif
 
-  // convierte la hora actual en horas, minutos y segundos
+  // Convert the synchronized UTC epoch to the selected local time.
+#ifdef LILYGO_S3_T_DISPLAY
+  time_t localEpoch = static_cast<time_t>(currentTime);
+  struct tm localTime;
+  if (mTriggerUpdate != 0 && localtime_r(&localEpoch, &localTime) != nullptr)
+  {
+    *currentHours = localTime.tm_hour;
+    *currentMinutes = localTime.tm_min;
+    *currentSeconds = localTime.tm_sec;
+  }
+  else
+  {
+    *currentHours = *currentMinutes = *currentSeconds = 0;
+  }
+#else
   *currentHours = currentTime % 86400 / 3600;
   *currentMinutes = currentTime % 3600 / 60;
   *currentSeconds = currentTime % 60;
+#endif
 }
 
 String getDate(){
@@ -390,7 +424,11 @@ String getDate(){
   unsigned long currentTime = initialTime + elapsedTime; // La hora actual
 
   // Convierte la hora actual (epoch time) en una estructura tm
-  struct tm *tm = localtime((time_t *)&currentTime);
+  time_t localEpoch = static_cast<time_t>(currentTime);
+  struct tm localTime;
+  if (localtime_r(&localEpoch, &localTime) == nullptr)
+    return "";
+  struct tm *tm = &localTime;
 
   int year = tm->tm_year + 1900; // tm_year es el número de años desde 1900
   int month = tm->tm_mon + 1;    // tm_mon es el mes del año desde 0 (enero) hasta 11 (diciembre)

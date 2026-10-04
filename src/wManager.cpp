@@ -15,6 +15,7 @@
 #include "drivers/storage/storage.h"
 #include "mining.h"
 #include "timeconst.h"
+#include "timezoneConfig.h"
 
 #include <ArduinoJson.h>
 #include <esp_flash.h>
@@ -34,6 +35,27 @@ bool wifiConnectionFailed = false;
 nvMemory nvMem;
 
 extern SDCard SDCrd;
+
+void updateTimezoneSetting(const char* value)
+{
+#ifdef LILYGO_S3_T_DISPLAY
+    const BitcoinClockTimeZone* zone = findBitcoinClockTimeZone(value);
+    if (zone == nullptr)
+    {
+        Serial.printf("[TIME] Unsupported time zone '%s'; keeping %s\n",
+                      value,
+                      Settings.TimezoneName.c_str());
+        return;
+    }
+
+    Settings.TimezoneName = zone->name;
+    Serial.printf("[TIME] Selected local time zone: %s\n", zone->name);
+#else
+    Settings.Timezone = atoi(value);
+    Serial.print("TimeZone fromUTC: ");
+    Serial.println(Settings.Timezone);
+#endif
+}
 
 String readCustomAPName() {
     Serial.println("DEBUG: Attempting to read custom AP name from flash at 0x3F0000...");
@@ -214,10 +236,41 @@ void init_WifiManager()
 
     // Custom elements
 
+#ifdef LILYGO_S3_T_DISPLAY
+        static String timezoneOptions = "<datalist id='timezone-options'>";
+        if (timezoneOptions.length() == strlen("<datalist id='timezone-options'>"))
+        {
+            for (const BitcoinClockTimeZone& zone : BITCOIN_CLOCK_TIME_ZONES)
+                timezoneOptions += "<option value='" + String(zone.name) + "'>";
+            timezoneOptions += "</datalist>";
+        }
+        wm.setCustomHeadElement(timezoneOptions.c_str());
+
+        WiFiManagerParameter timeZoneParameter(
+            "TimeZone",
+            "Local time zone",
+            Settings.TimezoneName.c_str(),
+            40,
+            "list=\"timezone-options\" autocapitalize=\"none\"");
+        char scheduleEnabledValue[2] = {Settings.BrightnessScheduleEnabled ? '1' : '0', '\0'};
+        char scheduleCheckboxAttributes[48] = "type=\"checkbox\" value=\"1\"";
+        if (Settings.BrightnessScheduleEnabled)
+            strcat(scheduleCheckboxAttributes, " checked");
+        WiFiManagerParameter brightnessScheduleParameter(
+            "BrightnessSchedule",
+            "Automatic brightness schedule",
+            scheduleEnabledValue,
+            1,
+            scheduleCheckboxAttributes);
+#else
         char charZone[6];
         sprintf(charZone, "%d", Settings.Timezone);
-        WiFiManagerParameter time_text_box_num("TimeZone", "Time zone from UTC (-12/+12)", charZone, 3);
-        wm.addParameter(&time_text_box_num);
+        WiFiManagerParameter timeZoneParameter("TimeZone", "Time zone from UTC (-12/+12)", charZone, 3);
+#endif
+        wm.addParameter(&timeZoneParameter);
+#ifdef LILYGO_S3_T_DISPLAY
+        wm.addParameter(&brightnessScheduleParameter);
+#endif
   #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
   char checkboxParams2[24] = "type=\"checkbox\"";
   if (Settings.invertColors)
@@ -249,7 +302,11 @@ void init_WifiManager()
         {
             //Could be break forced after edditing, so save new config
             Serial.println("failed to connect and hit timeout");
-            Settings.Timezone = atoi(time_text_box_num.getValue());
+            updateTimezoneSetting(timeZoneParameter.getValue());
+#ifdef LILYGO_S3_T_DISPLAY
+            Settings.BrightnessScheduleEnabled =
+                strcmp(brightnessScheduleParameter.getValue(), "1") == 0;
+#endif
             #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
                 Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
             #endif
@@ -277,7 +334,11 @@ void init_WifiManager()
             Serial.println("Failed to connect to configured WIFI, and hit timeout");
             if (shouldSaveConfig) {
                 // Save new config            
-                Settings.Timezone = atoi(time_text_box_num.getValue());
+                updateTimezoneSetting(timeZoneParameter.getValue());
+#ifdef LILYGO_S3_T_DISPLAY
+                Settings.BrightnessScheduleEnabled =
+                    strcmp(brightnessScheduleParameter.getValue(), "1") == 0;
+#endif
                 #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
                 Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
                 #endif
@@ -302,10 +363,6 @@ void init_WifiManager()
 
         // Lets deal with the user config values
 
-        Settings.Timezone = atoi(time_text_box_num.getValue());
-        Serial.print("TimeZone fromUTC: ");
-        Serial.println(Settings.Timezone);
-
         #if defined(ESP32_2432S028R) || defined(ESP32_2432S028_2USB)
         Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
         Serial.print("Invert Colors: ");
@@ -322,9 +379,11 @@ void init_WifiManager()
 
     // Lets deal with the user config values
 
-    Settings.Timezone = atoi(time_text_box_num.getValue());
-    Serial.print("TimeZone fromUTC: ");
-    Serial.println(Settings.Timezone);
+    updateTimezoneSetting(timeZoneParameter.getValue());
+#ifdef LILYGO_S3_T_DISPLAY
+    Settings.BrightnessScheduleEnabled =
+        strcmp(brightnessScheduleParameter.getValue(), "1") == 0;
+#endif
 
     #ifdef ESP32_2432S028R
     Settings.invertColors = (strncmp(invertColors.getValue(), "T", 1) == 0);
