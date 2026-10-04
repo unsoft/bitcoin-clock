@@ -69,7 +69,10 @@ void drawFooter(uint8_t page)
 
   tft.setTextColor(DIM_GOLD, BLACK);
   tft.setTextFont(1);
-  tft.drawString(String(page + 1) + " / 3", SCREEN_WIDTH - 20, SCREEN_HEIGHT - 10);
+  tft.drawString(String(page + 1) + " / " +
+                     String(currentDisplayDriver->num_cyclic_screens),
+                 SCREEN_WIDTH - 20,
+                 SCREEN_HEIGHT - 10);
 }
 
 void drawFrame()
@@ -81,7 +84,13 @@ void drawFrame()
   tft.fillCircle(SCREEN_WIDTH - 11, SCREEN_HEIGHT - 11, 2, DIM_GOLD);
 }
 
-void drawPage(const char* line1, const char* line2, const String& value, bool price, bool time)
+void drawPage(const char* line1,
+              const char* line2,
+              const String& value,
+              bool price,
+              bool time,
+              const char* priceUnit = "",
+              bool wonSign = false)
 {
   String digits = value;
   if (price)
@@ -136,7 +145,18 @@ void drawPage(const char* line1, const char* line2, const String& value, bool pr
       tft.setTextColor(WHITE, BLACK);
       tft.setTextDatum(MC_DATUM);
       tft.setTextFont(4);
-      tft.drawString("$", x + tileWidth / 2, TILE_Y + TILE_HEIGHT / 2);
+      if (wonSign)
+      {
+        const int centerX = x + tileWidth / 2;
+        const int centerY = TILE_Y + TILE_HEIGHT / 2;
+        tft.drawString("W", centerX, centerY);
+        tft.drawFastHLine(centerX - 10, centerY - 4, 20, WHITE);
+        tft.drawFastHLine(centerX - 10, centerY + 4, 20, WHITE);
+      }
+      else
+      {
+        tft.drawString(priceUnit, x + tileWidth / 2, TILE_Y + TILE_HEIGHT / 2);
+      }
     }
     x += tileWidth + TILE_GAP;
   }
@@ -181,10 +201,16 @@ void drawBlockPage(unsigned long)
   drawPage("CURRENT", "BLOCK", data.blockHeight, false, false);
 }
 
-void drawPricePage(unsigned long)
+void drawDollarPricePage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("BTC", "USDT", data.btcPrice, true, false);
+  drawPage("BTC", "USD", data.btcPriceUsd, true, false, "$");
+}
+
+void drawWonPricePage(unsigned long)
+{
+  const bitcoin_clock_data data = getBitcoinClockData();
+  drawPage("BTC", "KRW", data.btcPriceKrw, true, false, "", true);
 }
 
 void drawTimePage(unsigned long)
@@ -255,7 +281,11 @@ void noRotationChange() {}
 void noAnimation(unsigned long) {}
 void noLedAction(unsigned long) {}
 
-CyclicScreenFunction pages[] = {drawBlockPage, drawPricePage, drawTimePage};
+CyclicScreenFunction pages[] = {
+    drawDollarPricePage,
+    drawWonPricePage,
+    drawBlockPage,
+    drawTimePage};
 }
 
 void drawBitcoinClockWifiFailureScreen()

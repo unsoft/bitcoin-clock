@@ -114,7 +114,7 @@ void drawWifiConnectionFailedScreen()
 void selectDefaultScreen()
 {
 #ifdef LILYGO_S3_T_DISPLAY
-  currentDisplayDriver->current_cyclic_screen = 1;
+  currentDisplayDriver->current_cyclic_screen = 0;
 #else
   currentDisplayDriver->current_cyclic_screen = 0;
 #endif

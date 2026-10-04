@@ -18,6 +18,7 @@
 //#define getBTCAPI "https://api.blockchain.com/v3/exchange/tickers/BTC-USDT" -- updates infrequently
 #define getBTCAPI "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usdt"
 #define getBitcoinClockPriceAPI "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+#define getBitcoinClockKrwPriceAPI "https://api.upbit.com/v1/ticker?markets=KRW-BTC"
 
 #define UPDATE_BTC_min   1
 
@@ -92,7 +93,8 @@ typedef struct {
 
 typedef struct {
   String blockHeight;
-  String btcPrice;
+  String btcPriceUsd;
+  String btcPriceKrw;
   String currentTime;
 }bitcoin_clock_data;
 

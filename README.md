@@ -1,6 +1,6 @@
 # Bitcoin Clock
 
-**Bitcoin Clock V1**은 ESP32 기반의 작은 Bitcoin 정보 표시 장치입니다. 채굴 및 Stratum 기능은 실행하지 않으며, 최신 블록 높이와 BTC/USDT 가격을 표시합니다.
+**Bitcoin Clock V1**은 ESP32 기반의 작은 Bitcoin 정보 표시 장치입니다. 채굴 및 Stratum 기능은 실행하지 않으며, 최신 블록 높이, BTC/USD·BTC/KRW 가격, 한국 시각을 표시합니다.
 
 ## 원본 및 라이선스
 
@@ -14,9 +14,9 @@ Bitcoin Clock 화면은 **LILYGO TTGO T-Display 1.14 (V1)** 과 **LILYGO T-Displ
 
 ## 화면과 버튼
 
-- T-Display-S3에서는 버튼을 눌러 블록 높이, BTC/USDT 가격, 로컬 시각 화면을 순환합니다.
-- T-Display-S3는 부팅 시 BTC/USDT 가격 화면을 기본으로 표시합니다.
-- 블록 높이는 mempool.space에서, T-Display-S3 가격은 Binance BTC/USDT 공개 API에서 가져옵니다.
+- T-Display-S3에서는 버튼 1을 눌러 BTC/USD 가격, BTC/KRW 가격, 블록 높이, 한국 시각 화면을 순환합니다. 부팅 시 BTC/USD 가격 화면을 기본으로 표시합니다.
+- 블록 높이는 mempool.space에서 가져오며, BTC/USD는 Binance 공개 API, BTC/KRW는 Upbit 공개 API에서 가져옵니다. 두 거래소의 공개 현재가 조회에는 API 키가 필요하지 않습니다.
+- BTC/KRW 시세는 원화 기호(₩)와 함께 만원 단위로 반올림해 표시합니다. 예를 들어 화면의 `₩ 11575`는 약 115,750,000원(11,575만원)을 뜻합니다.
 - 블록 및 가격 화면은 7개 타일을 고정해서 사용합니다. 값이 더 길어지면 `CURRENT BLOCK`, `BTC USDT`, `$` 순서로 보조 표기를 숨겨 숫자 칸을 확보합니다.
 - T-Display-S3 시각은 NTP 동기화 후 한국 표준시(UTC+9)로 표시됩니다.
 - 가격과 블록 높이는 네트워크가 연결되면 자동으로 갱신됩니다.

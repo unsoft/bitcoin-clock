@@ -38,8 +38,10 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
 unsigned int bitcoin_price=0;
 String current_block = "------";
-String bitcoin_clock_price = "--";
-unsigned long mClockPriceUpdate = 0;
+String bitcoin_clock_usd_price = "--";
+String bitcoin_clock_krw_price = "--";
+unsigned long mClockUsdPriceUpdate = 0;
+unsigned long mClockKrwPriceUpdate = 0;
 constexpr unsigned long BITCOIN_CLOCK_PRICE_REFRESH_MS = 5000;
 global_data gData;
 pool_data pData;
@@ -178,36 +180,81 @@ unsigned long mBTCUpdate = 0;
 
 void updateBitcoinClockPrice(void)
 {
-    if (WiFi.status() != WL_CONNECTED ||
-        (mClockPriceUpdate != 0 && millis() - mClockPriceUpdate < BITCOIN_CLOCK_PRICE_REFRESH_MS))
+    if (WiFi.status() != WL_CONNECTED)
         return;
 
-    mClockPriceUpdate = millis();
-    HTTPClient http;
-    http.setTimeout(10000);
-    http.begin(getBitcoinClockPriceAPI);
-    int httpCode = http.GET();
+    if (mClockUsdPriceUpdate == 0 ||
+        millis() - mClockUsdPriceUpdate >= BITCOIN_CLOCK_PRICE_REFRESH_MS)
+    {
+        mClockUsdPriceUpdate = millis();
+        HTTPClient http;
+        http.setTimeout(5000);
+        http.begin(getBitcoinClockPriceAPI);
+        const int httpCode = http.GET();
 
-    if (httpCode == HTTP_CODE_OK) {
-        StaticJsonDocument<128> doc;
-        DeserializationError error = deserializeJson(doc, http.getString());
-        if (!error && doc["symbol"] == "BTCUSDT" && doc["price"].is<const char *>()) {
-            const float price = doc["price"].as<String>().toFloat();
-            if (price > 0.0f) {
-                bitcoin_clock_price = String(static_cast<uint32_t>(price + 0.5f));
+        if (httpCode == HTTP_CODE_OK) {
+            StaticJsonDocument<128> doc;
+            DeserializationError error = deserializeJson(doc, http.getString());
+            if (!error && doc["symbol"] == "BTCUSDT" && doc["price"].is<const char *>()) {
+                const float price = doc["price"].as<String>().toFloat();
+                if (price > 0.0f) {
+                    bitcoin_clock_usd_price = String(static_cast<uint32_t>(price + 0.5f));
+                } else {
+                    Serial.println("[CLOCK] Binance returned a non-positive BTC price");
+                }
+            } else if (error) {
+                Serial.printf("[CLOCK] Binance price JSON error: %s\n", error.c_str());
             } else {
-                Serial.println("[CLOCK] Binance returned a non-positive BTC price");
+                Serial.println("[CLOCK] Binance response did not contain a BTCUSDT price");
             }
-        } else if (error) {
-            Serial.printf("[CLOCK] Binance price JSON error: %s\n", error.c_str());
         } else {
-            Serial.println("[CLOCK] Binance response did not contain a BTCUSDT price");
+            Serial.printf("[CLOCK] Binance price request failed: HTTP %d\n", httpCode);
         }
-    } else {
-        Serial.printf("[CLOCK] Binance price request failed: HTTP %d\n", httpCode);
+        http.end();
     }
 
-    http.end();
+    if (mClockKrwPriceUpdate == 0 ||
+        millis() - mClockKrwPriceUpdate >= BITCOIN_CLOCK_PRICE_REFRESH_MS)
+    {
+        mClockKrwPriceUpdate = millis();
+        HTTPClient http;
+        http.setTimeout(5000);
+        http.begin(getBitcoinClockKrwPriceAPI);
+        const int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            StaticJsonDocument<64> filter;
+            filter[0]["market"] = true;
+            filter[0]["trade_price"] = true;
+            StaticJsonDocument<128> doc;
+            DeserializationError error = deserializeJson(
+                doc,
+                http.getString(),
+                DeserializationOption::Filter(filter));
+            JsonArray tickers = doc.as<JsonArray>();
+
+            if (!error && !tickers.isNull() && tickers.size() > 0 &&
+                tickers[0]["market"] == "KRW-BTC" &&
+                tickers[0]["trade_price"].is<double>()) {
+                const double priceKrw = tickers[0]["trade_price"].as<double>();
+                if (priceKrw > 0.0) {
+                    const uint32_t priceInTenThousandWon =
+                        static_cast<uint32_t>(priceKrw / 10000.0 + 0.5);
+                    bitcoin_clock_krw_price = String(priceInTenThousandWon);
+                } else {
+                    Serial.println("[CLOCK] Upbit returned a non-positive BTC price");
+                }
+            } else if (error) {
+                Serial.printf("[CLOCK] Upbit price JSON error: %s\n", error.c_str());
+            } else {
+                Serial.println("[CLOCK] Upbit response did not contain a KRW-BTC price");
+            }
+        } else {
+            Serial.printf("[CLOCK] Upbit price request failed: HTTP %d\n", httpCode);
+        }
+
+        http.end();
+    }
 }
 
 String getBTCprice(void){
@@ -372,7 +419,8 @@ bitcoin_clock_data getBitcoinClockData(void)
   bitcoin_clock_data data;
   data.blockHeight = getBlockHeight();
   updateBitcoinClockPrice();
-  data.btcPrice = bitcoin_clock_price;
+  data.btcPriceUsd = bitcoin_clock_usd_price;
+  data.btcPriceKrw = bitcoin_clock_krw_price;
   data.currentTime = getTime();
   return data;
 }
