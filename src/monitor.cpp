@@ -28,7 +28,8 @@ extern double best_diff; // track best diff
 extern monitor_data mMonitor;
 
 #ifdef LILYGO_S3_T_DISPLAY
-extern void setBitcoinClockBacklightLevel(uint8_t level);
+extern void setBitcoinClockBrightnessScheduleEnabled(bool enabled);
+extern void setBitcoinClockScheduledBrightness(uint8_t level, bool offWindow);
 #endif
 
 //from saved config
@@ -54,6 +55,7 @@ unsigned long initialTime = 0;
 
 void setup_monitor(void){
 #ifdef LILYGO_S3_T_DISPLAY
+    setBitcoinClockBrightnessScheduleEnabled(Settings.BrightnessScheduleEnabled);
     const BitcoinClockTimeZone* zone =
         findBitcoinClockTimeZone(Settings.TimezoneName.c_str());
     if (zone == nullptr)
@@ -382,7 +384,7 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
                                      (!weekend && (minuteOfDay == 660 || minuteOfDay == 1020));
         if (!brightnessScheduleInitialized || isScheduleStart)
         {
-          setBitcoinClockBacklightLevel(brightnessLevel);
+          setBitcoinClockScheduledBrightness(brightnessLevel, brightnessLevel == 0);
           Serial.printf("[DISPLAY] Automatic brightness: %u%% (%s %02d:%02d)\n",
                         brightnessLevel == 0 ? 0 : brightnessLevel == 1 ? 25 : 50,
                         weekend ? "weekend" : "weekday",

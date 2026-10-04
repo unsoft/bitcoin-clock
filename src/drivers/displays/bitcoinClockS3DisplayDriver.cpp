@@ -23,9 +23,14 @@ constexpr int VALUE_TILE_COUNT = 7;
 constexpr uint8_t BACKLIGHT_PWM_CHANNEL = 7;
 constexpr uint8_t BACKLIGHT_LEVELS[] = {0, 64, 128, 192, 255};
 constexpr uint8_t BACKLIGHT_LEVEL_COUNT = sizeof(BACKLIGHT_LEVELS) / sizeof(BACKLIGHT_LEVELS[0]);
+constexpr uint8_t MANUAL_ON_BRIGHTNESS_LEVEL = 2;
+constexpr uint8_t SCHEDULE_DISABLED_BRIGHTNESS_LEVEL = 3;
 
 TFT_eSPI tft;
 uint8_t backlightLevel = BACKLIGHT_LEVEL_COUNT - 1;
+bool brightnessScheduleEnabled = true;
+bool brightnessScheduleOffWindow = false;
+bool manualBrightnessOverride = false;
 int renderedPage = -1;
 int renderedTileCount = -1;
 int renderedDigitCapacity = -1;
@@ -253,6 +258,13 @@ void initDisplay()
 
 void cycleBacklightBrightness()
 {
+  if (brightnessScheduleEnabled && brightnessScheduleOffWindow && !manualBrightnessOverride)
+  {
+    manualBrightnessOverride = true;
+    setBitcoinClockBacklightLevel(MANUAL_ON_BRIGHTNESS_LEVEL);
+    return;
+  }
+
   setBitcoinClockBacklightLevel((backlightLevel + 1) % BACKLIGHT_LEVEL_COUNT);
 }
 
@@ -320,6 +332,23 @@ void setBitcoinClockBacklightLevel(uint8_t level)
   ledcWrite(BACKLIGHT_PWM_CHANNEL, BACKLIGHT_LEVELS[backlightLevel]);
   Serial.printf("[DISPLAY] Backlight brightness: %u%%\n",
                 static_cast<unsigned int>(BACKLIGHT_LEVELS[backlightLevel]) * 100 / 255);
+}
+
+void setBitcoinClockBrightnessScheduleEnabled(bool enabled)
+{
+  brightnessScheduleEnabled = enabled;
+  brightnessScheduleOffWindow = false;
+  manualBrightnessOverride = false;
+
+  if (!brightnessScheduleEnabled)
+    setBitcoinClockBacklightLevel(SCHEDULE_DISABLED_BRIGHTNESS_LEVEL);
+}
+
+void setBitcoinClockScheduledBrightness(uint8_t level, bool offWindow)
+{
+  brightnessScheduleOffWindow = offWindow;
+  manualBrightnessOverride = false;
+  setBitcoinClockBacklightLevel(level);
 }
 
 DisplayDriver bitcoinClockS3DisplayDriver = {
