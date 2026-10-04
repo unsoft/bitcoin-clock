@@ -27,6 +27,8 @@ constexpr uint8_t BACKLIGHT_LEVEL_COUNT = sizeof(BACKLIGHT_LEVELS) / sizeof(BACK
 TFT_eSPI tft;
 uint8_t backlightLevel = BACKLIGHT_LEVEL_COUNT - 1;
 int renderedPage = -1;
+int renderedTileCount = -1;
+int renderedDigitCapacity = -1;
 String renderedValue;
 bool renderedLabelVisible = false;
 bool renderedCurrencyVisible = false;
@@ -53,6 +55,12 @@ void drawDigit(int x, int width, char digit)
   tft.setTextDatum(MC_DATUM);
   tft.setTextFont(7);
   tft.drawString(String(digit), x + width / 2, TILE_Y + TILE_HEIGHT / 2 + 1);
+}
+
+void drawBoldLine(int x0, int y0, int x1, int y1, uint16_t color)
+{
+  for (int offset = -1; offset <= 1; ++offset)
+    tft.drawLine(x0 + offset, y0, x1 + offset, y1, color);
 }
 
 void drawFooter(uint8_t page)
@@ -87,6 +95,7 @@ void drawFrame()
 void drawPage(const char* line1,
               const char* line2,
               const String& value,
+              int page,
               bool price,
               bool time,
               const char* priceUnit = "",
@@ -101,7 +110,9 @@ void drawPage(const char* line1,
   if (digits.length() == 0)
     digits = "--";
 
-  const int page = currentDisplayDriver->current_cyclic_screen;
+  if (currentDisplayDriver->current_cyclic_screen != page)
+    return;
+
   const int prefixTiles = price ? 2 : 1;
   const bool showLabel = time || digits.length() <= VALUE_TILE_COUNT - prefixTiles;
   const bool showCurrency = price && digits.length() <= VALUE_TILE_COUNT - 1;
@@ -117,6 +128,8 @@ void drawPage(const char* line1,
   const int rowWidth = tileCount * tileWidth + (tileCount - 1) * TILE_GAP;
   const int startX = (SCREEN_WIDTH - rowWidth) / 2;
   const bool redrawLayout = page != renderedPage ||
+                            tileCount != renderedTileCount ||
+                            digitCapacity != renderedDigitCapacity ||
                             showLabel != renderedLabelVisible ||
                             showCurrency != renderedCurrencyVisible;
 
@@ -149,9 +162,12 @@ void drawPage(const char* line1,
       {
         const int centerX = x + tileWidth / 2;
         const int centerY = TILE_Y + TILE_HEIGHT / 2;
-        tft.drawString("W", centerX, centerY);
-        tft.drawFastHLine(centerX - 10, centerY - 4, 20, WHITE);
-        tft.drawFastHLine(centerX - 10, centerY + 4, 20, WHITE);
+        drawBoldLine(centerX - 12, centerY - 10, centerX - 7, centerY + 10, WHITE);
+        drawBoldLine(centerX - 7, centerY + 10, centerX, centerY - 1, WHITE);
+        drawBoldLine(centerX, centerY - 1, centerX + 7, centerY + 10, WHITE);
+        drawBoldLine(centerX + 7, centerY + 10, centerX + 12, centerY - 10, WHITE);
+        tft.fillRect(centerX - 14, centerY - 5, 28, 3, WHITE);
+        tft.fillRect(centerX - 14, centerY + 3, 28, 3, WHITE);
       }
       else
       {
@@ -190,6 +206,8 @@ void drawPage(const char* line1,
     drawFooter(page);
 
   renderedPage = page;
+  renderedTileCount = tileCount;
+  renderedDigitCapacity = digitCapacity;
   renderedValue = digits;
   renderedLabelVisible = showLabel;
   renderedCurrencyVisible = showCurrency;
@@ -198,19 +216,19 @@ void drawPage(const char* line1,
 void drawBlockPage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("CURRENT", "BLOCK", data.blockHeight, false, false);
+  drawPage("CURRENT", "BLOCK", data.blockHeight, 2, false, false);
 }
 
 void drawDollarPricePage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("BTC", "USD", data.btcPriceUsd, true, false, "$");
+  drawPage("BTC", "USD", data.btcPriceUsd, 0, true, false, "$");
 }
 
 void drawWonPricePage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("BTC", "KRW", data.btcPriceKrw, true, false, "", true);
+  drawPage("BTC", "KRW", data.btcPriceKrw, 1, true, false, "", true);
 }
 
 void drawTimePage(unsigned long)
@@ -218,7 +236,7 @@ void drawTimePage(unsigned long)
   const bitcoin_clock_data data = getBitcoinClockData();
   String time = data.currentTime;
   time.replace(":", "");
-  drawPage("LOCAL", "TIME", time, false, true);
+  drawPage("LOCAL", "TIME", time, 3, false, true);
 }
 
 void initDisplay()
