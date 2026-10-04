@@ -29,9 +29,9 @@ Bitcoin Clock 화면은 **LILYGO TTGO T-Display 1.14 (V1)** 과 **LILYGO T-Displ
 
 - 네트워크 이름: `BitcoinClock`
 - 기본 비밀번호: `BitcoinClock`
-- 설정 페이지에서 Wi-Fi 네트워크와 지역 시간대를 지정하고 자동 밝기 스케줄을 켜거나 끌 수 있습니다. 시간대 입력란의 제안 목록에서 선택할 수 있으며, 기본값은 `Asia/Seoul`입니다. 지원 지역은 `Asia/Seoul`, `Asia/Tokyo`, `Asia/Shanghai`, `Asia/Singapore`, `UTC`, `America/New_York`, `America/Chicago`, `America/Denver`, `America/Phoenix`, `America/Los_Angeles`, `America/Anchorage`, `Pacific/Honolulu`, `Europe/London`, `Europe/Paris`, `Australia/Sydney`, `Pacific/Auckland`입니다.
+- 설정 페이지에서 Wi-Fi 네트워크와 지역 시간대를 선택 상자에서 지정하고 자동 밝기 스케줄을 켜거나 끌 수 있습니다. 기본값은 `Asia/Seoul`입니다. 지원 지역은 `Asia/Seoul`, `Asia/Tokyo`, `Asia/Shanghai`, `Asia/Singapore`, `UTC`, `America/New_York`, `America/Chicago`, `America/Denver`, `America/Phoenix`, `America/Los_Angeles`, `America/Anchorage`, `Pacific/Honolulu`, `Europe/London`, `Europe/Paris`, `Australia/Sydney`, `Pacific/Auckland`입니다.
 - 저장된 Wi-Fi 연결을 3회 시도한 뒤 실패하면 화면에 안내가 표시되고 `BitcoinClock` 설정용 접속점이 열립니다. Wi-Fi 이름과 비밀번호는 `config.json`이 아니라 WiFiManager가 기기 내부에 저장합니다. `config.json`은 풀 설정과 시간대 등 앱 설정용입니다.
-- S3 시간대는 지역 식별자 입력 방식이며, 펌웨어가 지원하는 값만 저장됩니다. 지원하지 않는 값은 로그에 오류를 남기고 기존 시간대를 유지합니다. 시간대 변경을 위해 설정 포털에 다시 들어가면 Wi-Fi 접속 정보도 다시 입력해야 할 수 있습니다.
+- S3 시간대는 목록에서 선택하며, 펌웨어가 지원하는 지역만 표시됩니다. 시간대 변경을 위해 설정 포털에 다시 들어가면 Wi-Fi 접속 정보도 다시 입력해야 할 수 있습니다.
 
 ## 빌드
 

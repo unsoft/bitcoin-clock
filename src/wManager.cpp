@@ -237,21 +237,35 @@ void init_WifiManager()
     // Custom elements
 
 #ifdef LILYGO_S3_T_DISPLAY
-        static String timezoneOptions = "<datalist id='timezone-options'>";
-        if (timezoneOptions.length() == strlen("<datalist id='timezone-options'>"))
+        static String timezoneSelectorScript;
+        if (timezoneSelectorScript.length() == 0)
         {
+            timezoneSelectorScript =
+                "<script>document.addEventListener('DOMContentLoaded',function(){"
+                "var input=document.querySelector('input[name=\"TimeZone\"]');"
+                "if(!input)return;"
+                "var select=document.createElement('select');"
+                "select.id=input.id;select.name='TimeZone';"
+                "select.style.width='100%';select.style.padding='12px';"
+                "select.style.margin='8px 0';";
             for (const BitcoinClockTimeZone& zone : BITCOIN_CLOCK_TIME_ZONES)
-                timezoneOptions += "<option value='" + String(zone.name) + "'>";
-            timezoneOptions += "</datalist>";
+            {
+                timezoneSelectorScript +=
+                    "var option=document.createElement('option');"
+                    "option.value='" + String(zone.name) + "';"
+                    "option.textContent='" + String(zone.name) + "';"
+                    "option.selected=option.value==='" + Settings.TimezoneName + "';"
+                    "select.appendChild(option);";
+            }
+            timezoneSelectorScript += "input.replaceWith(select);});</script>";
         }
-        wm.setCustomHeadElement(timezoneOptions.c_str());
+        wm.setCustomHeadElement(timezoneSelectorScript.c_str());
 
         WiFiManagerParameter timeZoneParameter(
             "TimeZone",
             "Local time zone",
             Settings.TimezoneName.c_str(),
-            40,
-            "list=\"timezone-options\" autocapitalize=\"none\"");
+            40);
         char scheduleEnabledValue[2] = {Settings.BrightnessScheduleEnabled ? '1' : '0', '\0'};
         char scheduleCheckboxAttributes[48] = "type=\"checkbox\" value=\"1\"";
         if (Settings.BrightnessScheduleEnabled)
