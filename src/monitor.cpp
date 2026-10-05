@@ -348,10 +348,12 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
 #ifdef LILYGO_S3_T_DISPLAY
   static bool brightnessScheduleInitialized = false;
   static int64_t lastProcessedMinute = -1;
+  static int lastSchedulePeriod = -1;
   if (!Settings.BrightnessScheduleEnabled)
   {
     brightnessScheduleInitialized = false;
     lastProcessedMinute = -1;
+    lastSchedulePeriod = -1;
   }
   else if (mTriggerUpdate != 0)
   {
@@ -366,30 +368,57 @@ void getTime(unsigned long* currentHours, unsigned long* currentMinutes, unsigne
         const int minuteOfDay = localTime.tm_hour * 60 + localTime.tm_min;
         const bool weekend = localTime.tm_wday == 0 || localTime.tm_wday == 6;
         uint8_t brightnessLevel;
+        int schedulePeriod;
 
         if (minuteOfDay < 330)
+        {
           brightnessLevel = 0;
-        else if (minuteOfDay < 480)
+          schedulePeriod = 0;
+        }
+        else if (minuteOfDay < 420)
+        {
           brightnessLevel = 1;
+          schedulePeriod = 1;
+        }
+        else if (minuteOfDay < 540)
+        {
+          brightnessLevel = 2;
+          schedulePeriod = 2;
+        }
+        else if (weekend && minuteOfDay < 1080)
+        {
+          brightnessLevel = 3;
+          schedulePeriod = 3;
+        }
         else if (!weekend && minuteOfDay < 660)
-          brightnessLevel = 2;
+        {
+          brightnessLevel = 3;
+          schedulePeriod = 3;
+        }
         else if (!weekend && minuteOfDay < 1020)
+        {
           brightnessLevel = 0;
+          schedulePeriod = 4;
+        }
         else
+        {
           brightnessLevel = 2;
+          schedulePeriod = weekend ? 4 : 5;
+        }
 
-        const bool isScheduleStart = minuteOfDay == 0 ||
-                                     minuteOfDay == 330 ||
-                                     minuteOfDay == 480 ||
-                                     (!weekend && (minuteOfDay == 660 || minuteOfDay == 1020));
-        if (!brightnessScheduleInitialized || isScheduleStart)
+        if (weekend)
+          schedulePeriod += 6;
+
+        if (!brightnessScheduleInitialized || schedulePeriod != lastSchedulePeriod)
         {
           setBitcoinClockScheduledBrightness(brightnessLevel, brightnessLevel == 0);
           Serial.printf("[DISPLAY] Automatic brightness: %u%% (%s %02d:%02d)\n",
-                        brightnessLevel == 0 ? 0 : brightnessLevel == 1 ? 25 : 50,
+                        brightnessLevel == 0 ? 0 : brightnessLevel == 1 ? 25 :
+                        brightnessLevel == 2 ? 50 : 75,
                         weekend ? "weekend" : "weekday",
                         localTime.tm_hour,
                         localTime.tm_min);
+          lastSchedulePeriod = schedulePeriod;
         }
 
         brightnessScheduleInitialized = true;

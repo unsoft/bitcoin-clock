@@ -346,6 +346,9 @@ void setBitcoinClockBrightnessScheduleEnabled(bool enabled)
 
 void setBitcoinClockScheduledBrightness(uint8_t level, bool offWindow)
 {
+  if (level >= BACKLIGHT_LEVEL_COUNT)
+    return;
+
   brightnessScheduleOffWindow = offWindow;
   manualBrightnessOverride = false;
   setBitcoinClockBacklightLevel(level);
