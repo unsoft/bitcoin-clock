@@ -48,7 +48,7 @@ jobs:
         timeout-minutes: 120
         with:
           secret: ${{ github.TOKEN }}
-          approvers: BitMaker-hub
+          approvers: unsoft
           minimum-approvals: 1
           issue-title: "Releasing Bitcoin Clock ${{ needs.build.outputs.version }}"
           issue-body: "Please approve or deny the release of ${{ needs.build.outputs.version }}."
@@ -68,4 +68,3 @@ jobs:
           make_latest: true
           fail_on_unmatched_files: true
           files: ${{ github.workspace }}/**/*.bin
-
