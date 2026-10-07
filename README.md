@@ -10,7 +10,7 @@
 
 ## 대상 보드
 
-Bitcoin Clock 화면은 **LILYGO TTGO T-Display 1.14 (V1)** 과 **LILYGO T-Display-S3**를 지원합니다. 두 보드의 펌웨어는 각각 `TTGO-T-Display` 및 `Lilygo-T-Display-S3` 환경으로 빌드합니다.
+Bitcoin Clock 화면은 **LILYGO T-Display-S3**를 지원합니다. 보드의 펌웨어는 `Lilygo-T-Display-S3` 환경으로 빌드합니다.
 
 ## 화면과 버튼
 
@@ -38,9 +38,6 @@ Bitcoin Clock 화면은 **LILYGO TTGO T-Display 1.14 (V1)** 과 **LILYGO T-Displ
 PlatformIO Core가 설치된 환경에서 보드에 맞는 명령으로 빌드합니다.
 
 ```sh
-# T-Display V1
-pio run -e TTGO-T-Display
-
 # T-Display-S3
 pio run -e Lilygo-T-Display-S3
 ```
