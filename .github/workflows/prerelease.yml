@@ -24,7 +24,7 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
       - name: Build PlatformIO Project
-        run: pio run
+        run: pio run -e Lilygo-T-Display-S3
       - name: Debug - Check generated files
         run: |
           echo "=== All .bin files found ==="
