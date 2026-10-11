@@ -8,9 +8,9 @@
 
 저장소에는 별도 조건으로 배포되는 라이브러리와 글꼴도 포함되어 있습니다. 해당 항목과 고지 위치는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 확인하세요. 루트 MIT 라이선스가 별도 고지된 제3자 자산의 라이선스를 대체하지 않습니다.
 
-## 대상 보드
+## 지원 보드
 
-Bitcoin Clock 화면은 **LILYGO T-Display-S3**를 지원합니다. 보드의 펌웨어는 `Lilygo-T-Display-S3` 환경으로 빌드합니다.
+현재 지원하는 보드는 **LILYGO T-Display-S3**입니다. PlatformIO 환경 이름은 `Lilygo-T-Display-S3`입니다.
 
 ## 화면과 버튼
 
@@ -35,7 +35,7 @@ Bitcoin Clock 화면은 **LILYGO T-Display-S3**를 지원합니다. 보드의 �
 
 ## 빌드
 
-PlatformIO Core가 설치된 환경에서 보드에 맞는 명령으로 빌드합니다.
+PlatformIO Core가 설치된 환경에서 다음 명령으로 빌드합니다.
 
 ```sh
 # T-Display-S3
@@ -43,3 +43,26 @@ pio run -e Lilygo-T-Display-S3
 ```
 
 화면의 펌웨어 버전은 `V1`입니다. 빌드 파일은 선택한 환경의 `.pio/build/<environment>/` 아래에 생성됩니다.
+
+## PlatformIO 없이 펌웨어 플래싱
+
+PlatformIO를 설치하지 않아도 [GitHub Releases](https://github.com/unsoft/bitcoin-clock/releases/latest)에서 보드에 맞는 `*_factory.bin` 파일을 받아 ESP32에 직접 기록할 수 있습니다. `*_factory.bin`은 부트로더, 파티션 테이블, 앱 펌웨어를 포함한 통합 이미지입니다. `*_firmware.bin`은 앱 업데이트용이므로 처음 USB 플래싱할 때 사용하지 마세요.
+
+1. GitHub Releases에서 `Lilygo-T-Display-S3_factory.bin` 파일을 다운로드합니다.
+2. USB 케이블로 보드를 연결하고 [Espressif esptool](https://github.com/espressif/esptool)을 설치합니다. Python이 설치되어 있어야 합니다.
+
+   ```sh
+   python3 -m pip install esptool
+   ```
+
+3. 운영체제에서 보드의 시리얼 포트를 확인합니다. macOS에서는 `/dev/cu.usbmodem...` 또는 `/dev/cu.usbserial...`, Linux에서는 `/dev/ttyACM0` 또는 `/dev/ttyUSB0`, Windows에서는 `COM3` 같은 이름입니다.
+4. 터미널에서 다운로드한 파일이 있는 폴더로 이동한 뒤, 보드에 맞는 명령을 실행합니다. 아래의 `PORT`를 실제 포트 이름으로 바꾸세요.
+
+   ```sh
+   # LILYGO T-Display-S3 (ESP32-S3)
+   python3 -m esptool --chip esp32s3 --port PORT --baud 460800 write_flash 0x0 Lilygo-T-Display-S3_factory.bin
+   ```
+
+   Windows에서 `python3` 명령을 찾을 수 없으면 `py -m esptool`을 사용합니다. 업로드가 실패하면 `--baud 115200`으로 낮춰 다시 시도하고, 필요하면 보드의 `BOOT` 버튼을 누른 채 USB를 연결한 후 명령을 실행하세요.
+
+5. 완료되면 보드를 재시작합니다. 전체 플래시를 지우는 별도 명령은 설정과 저장된 Wi-Fi 정보도 삭제하므로, 특별히 초기화할 때가 아니면 실행하지 마세요.
