@@ -12,12 +12,19 @@
 
 현재 지원하는 보드는 **LILYGO T-Display-S3**입니다. PlatformIO 환경 이름은 `Lilygo-T-Display-S3`입니다.
 
+## 화면 예시
+
+![Bitcoin Clock 화면 예시 1](images/bitcioin-clock-1.png)
+
+![Bitcoin Clock 화면 예시 2](images/bitcioin-clock-2.png)
+
 ## 화면과 버튼
 
 - T-Display-S3에서는 버튼 1을 눌러 BTC/USD 가격, BTC/KRW 가격, 블록 높이, 한국 시각 화면을 순환합니다. 부팅 시 BTC/USD 가격 화면을 기본으로 표시합니다.
 - 블록 높이는 mempool.space에서 가져오며, BTC/USD는 Binance 공개 API, BTC/KRW는 Upbit 공개 API에서 가져옵니다. 두 거래소의 공개 현재가 조회에는 API 키가 필요하지 않습니다.
 - BTC/KRW 시세는 원화 기호(₩)와 함께 만원 단위로 반올림해 표시합니다. 예를 들어 화면의 `₩ 11575`는 약 115,750,000원(11,575만원)을 뜻합니다.
 - 블록 및 가격 화면은 7개 타일을 고정해서 사용합니다. 값이 더 길어지면 `CURRENT BLOCK`, `BTC USD`/`BTC KRW`, 통화 기호 순서로 보조 표기를 숨겨 숫자 칸을 확보합니다.
+- 화면 아래쪽에는 `BITCOIN CLOCK` 이름을 표시합니다. BTC/USD 화면의 보조 줄에는 현재 블록 높이, CoinGecko의 비트코인 도미넌스, Alternative.me의 Crypto Fear & Greed Index를 차례로 표시합니다. 블록 높이와 시계 화면의 보조 줄에는 Binance BTC/USD 가격, 비트코인 도미넌스, F&G 지수를 표시합니다. BTC/KRW 화면에는 `KRW-USD 1342.1 / Premium +1.52%` 형식으로 Frankfurter의 USD/KRW 기준 환율과 김치 프리미엄을 표시합니다. 김치 프리미엄은 `(Upbit BTC/KRW ÷ (Binance BTC/USDT × Frankfurter USD/KRW 환율) - 1) × 100`으로 계산하며, 음수이면 마이너스 기호도 표시합니다. 가격은 5초, 블록 높이는 2분, 환율·도미넌스·F&G는 5분 간격으로 조회됩니다. 네트워크나 API에 일시적인 문제가 생기면 마지막 정상 수신값을 유지하고 30초 후 재시도합니다. Wi-Fi 재연결 시에는 캐시된 시세·지표를 즉시 새로고침합니다.
 - T-Display-S3 시각과 자동 밝기 일정은 설정한 지역 시간대의 현지 시각을 따릅니다. 미국 등 서머타임이 적용되는 지역은 계절에 따라 자동 조정됩니다.
 - 가격과 블록 높이는 네트워크가 연결되면 자동으로 갱신됩니다.
 - 버튼 2를 짧게 누르면 화면 밝기가 꺼짐 → 25% → 50% → 75% → 100% 순서로 바뀝니다. 길게 누르면 설정을 초기화합니다.

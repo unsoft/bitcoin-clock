@@ -42,9 +42,27 @@ unsigned int bitcoin_price=0;
 String current_block = "------";
 String bitcoin_clock_usd_price = "--";
 String bitcoin_clock_krw_price = "--";
+String bitcoin_clock_krw_price_full = "--";
+String bitcoin_clock_krw_usd_rate = "--";
+String bitcoin_clock_kimchi_premium = "--";
+String bitcoin_clock_btc_dominance = "--";
+String bitcoin_clock_fear_greed_index = "--";
+double bitcoin_clock_usd_price_value = 0.0;
+double bitcoin_clock_krw_price_value = 0.0;
+double bitcoin_clock_krw_usd_rate_value = 0.0;
 unsigned long mClockUsdPriceUpdate = 0;
 unsigned long mClockKrwPriceUpdate = 0;
 constexpr unsigned long BITCOIN_CLOCK_PRICE_REFRESH_MS = 5000;
+constexpr unsigned long BITCOIN_CLOCK_INDICATOR_REFRESH_MS = 300000;
+constexpr unsigned long BITCOIN_CLOCK_RETRY_MS = 30000;
+unsigned long mClockUsdPriceAttempt = 0;
+unsigned long mClockKrwPriceAttempt = 0;
+unsigned long mClockKrwUsdRateUpdate = 0;
+unsigned long mClockKrwUsdRateAttempt = 0;
+unsigned long mClockGlobalIndicatorUpdate = 0;
+unsigned long mClockGlobalIndicatorAttempt = 0;
+unsigned long mClockFearGreedUpdate = 0;
+unsigned long mClockFearGreedAttempt = 0;
 global_data gData;
 pool_data pData;
 String poolAPIUrl;
@@ -194,15 +212,45 @@ String getBlockHeight(void){
 
 unsigned long mBTCUpdate = 0;
 
+bool bitcoinClockRequestDue(unsigned long lastSuccessfulUpdate,
+                            unsigned long lastAttempt,
+                            unsigned long refreshInterval)
+{
+    const unsigned long now = millis();
+    const bool refreshDue = lastSuccessfulUpdate == 0 ||
+                            now - lastSuccessfulUpdate >= refreshInterval;
+    const bool retryDue = lastAttempt == 0 ||
+                         now - lastAttempt >= BITCOIN_CLOCK_RETRY_MS;
+    return refreshDue && retryDue;
+}
+
 void updateBitcoinClockPrice(void)
 {
-    if (WiFi.status() != WL_CONNECTED)
+    static bool wasConnected = false;
+    const bool connected = WiFi.status() == WL_CONNECTED;
+    if (connected && !wasConnected)
+    {
+        mClockUsdPriceUpdate = 0;
+        mClockKrwPriceUpdate = 0;
+        mClockKrwUsdRateUpdate = 0;
+        mClockGlobalIndicatorUpdate = 0;
+        mClockFearGreedUpdate = 0;
+        mClockUsdPriceAttempt = 0;
+        mClockKrwPriceAttempt = 0;
+        mClockKrwUsdRateAttempt = 0;
+        mClockGlobalIndicatorAttempt = 0;
+        mClockFearGreedAttempt = 0;
+        Serial.println("[CLOCK] Wi-Fi reconnected; refreshing cached market indicators");
+    }
+    wasConnected = connected;
+    if (!connected)
         return;
 
-    if (mClockUsdPriceUpdate == 0 ||
-        millis() - mClockUsdPriceUpdate >= BITCOIN_CLOCK_PRICE_REFRESH_MS)
+    if (bitcoinClockRequestDue(mClockUsdPriceUpdate,
+                               mClockUsdPriceAttempt,
+                               BITCOIN_CLOCK_PRICE_REFRESH_MS))
     {
-        mClockUsdPriceUpdate = millis();
+        mClockUsdPriceAttempt = millis();
         HTTPClient http;
         http.setTimeout(5000);
         http.begin(getBitcoinClockPriceAPI);
@@ -212,9 +260,11 @@ void updateBitcoinClockPrice(void)
             StaticJsonDocument<128> doc;
             DeserializationError error = deserializeJson(doc, http.getString());
             if (!error && doc["symbol"] == "BTCUSDT" && doc["price"].is<const char *>()) {
-                const float price = doc["price"].as<String>().toFloat();
+                const double price = doc["price"].as<String>().toDouble();
                 if (price > 0.0f) {
+                    bitcoin_clock_usd_price_value = price;
                     bitcoin_clock_usd_price = String(static_cast<uint32_t>(price + 0.5f));
+                    mClockUsdPriceUpdate = millis();
                 } else {
                     Serial.println("[CLOCK] Binance returned a non-positive BTC price");
                 }
@@ -229,10 +279,11 @@ void updateBitcoinClockPrice(void)
         http.end();
     }
 
-    if (mClockKrwPriceUpdate == 0 ||
-        millis() - mClockKrwPriceUpdate >= BITCOIN_CLOCK_PRICE_REFRESH_MS)
+    if (bitcoinClockRequestDue(mClockKrwPriceUpdate,
+                               mClockKrwPriceAttempt,
+                               BITCOIN_CLOCK_PRICE_REFRESH_MS))
     {
-        mClockKrwPriceUpdate = millis();
+        mClockKrwPriceAttempt = millis();
         HTTPClient http;
         http.setTimeout(5000);
         http.begin(getBitcoinClockKrwPriceAPI);
@@ -248,27 +299,148 @@ void updateBitcoinClockPrice(void)
                 http.getString(),
                 DeserializationOption::Filter(filter));
             JsonArray tickers = doc.as<JsonArray>();
-
-            if (!error && !tickers.isNull() && tickers.size() > 0 &&
-                tickers[0]["market"] == "KRW-BTC" &&
-                tickers[0]["trade_price"].is<double>()) {
-                const double priceKrw = tickers[0]["trade_price"].as<double>();
-                if (priceKrw > 0.0) {
-                    const uint32_t priceInTenThousandWon =
-                        static_cast<uint32_t>(priceKrw / 10000.0 + 0.5);
-                    bitcoin_clock_krw_price = String(priceInTenThousandWon);
-                } else {
-                    Serial.println("[CLOCK] Upbit returned a non-positive BTC price");
+            if (!error && !tickers.isNull()) {
+                for (JsonObject ticker : tickers) {
+                    const double tradePrice = ticker["trade_price"] | 0.0;
+                    if (ticker["market"] == "KRW-BTC" && tradePrice > 0.0) {
+                        bitcoin_clock_krw_price_value = tradePrice;
+                        const uint32_t priceInTenThousandWon =
+                            static_cast<uint32_t>(tradePrice / 10000.0 + 0.5);
+                        bitcoin_clock_krw_price = String(priceInTenThousandWon);
+                        char fullPrice[24];
+                        snprintf(fullPrice,
+                                 sizeof(fullPrice),
+                                 "%llu",
+                                 static_cast<unsigned long long>(tradePrice + 0.5));
+                        bitcoin_clock_krw_price_full = fullPrice;
+                        mClockKrwPriceUpdate = millis();
+                    }
                 }
             } else if (error) {
                 Serial.printf("[CLOCK] Upbit price JSON error: %s\n", error.c_str());
             } else {
-                Serial.println("[CLOCK] Upbit response did not contain a KRW-BTC price");
+                Serial.println("[CLOCK] Upbit response did not contain ticker data");
             }
         } else {
             Serial.printf("[CLOCK] Upbit price request failed: HTTP %d\n", httpCode);
         }
 
+        http.end();
+    }
+
+    if (bitcoinClockRequestDue(mClockKrwUsdRateUpdate,
+                               mClockKrwUsdRateAttempt,
+                               BITCOIN_CLOCK_INDICATOR_REFRESH_MS)) {
+        mClockKrwUsdRateAttempt = millis();
+        HTTPClient http;
+        http.setTimeout(5000);
+        http.begin(getBitcoinClockKrwUsdRateAPI);
+        const int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            StaticJsonDocument<96> filter;
+            filter["base"] = true;
+            filter["quote"] = true;
+            filter["rate"] = true;
+            StaticJsonDocument<128> doc;
+            DeserializationError error = deserializeJson(
+                doc,
+                http.getString(),
+                DeserializationOption::Filter(filter));
+
+            if (!error && doc["base"] == "USD" && doc["quote"] == "KRW" &&
+                doc["rate"].is<double>()) {
+                const double rate = doc["rate"].as<double>();
+                if (rate > 0.0) {
+                    bitcoin_clock_krw_usd_rate_value = rate;
+                    bitcoin_clock_krw_usd_rate = String(rate, 1);
+                    mClockKrwUsdRateUpdate = millis();
+                } else {
+                    Serial.println("[CLOCK] Frankfurter returned a non-positive USD/KRW rate");
+                }
+            } else if (error) {
+                Serial.printf("[CLOCK] Frankfurter forex JSON error: %s\n", error.c_str());
+            } else {
+                Serial.println("[CLOCK] Frankfurter response did not contain a USD/KRW rate");
+            }
+        } else {
+            Serial.printf("[CLOCK] Frankfurter forex request failed: HTTP %d\n", httpCode);
+        }
+        http.end();
+    }
+
+    if (bitcoin_clock_usd_price_value > 0.0 &&
+        bitcoin_clock_krw_price_value > 0.0 &&
+        bitcoin_clock_krw_usd_rate_value > 0.0) {
+        const double premium =
+            (bitcoin_clock_krw_price_value /
+             (bitcoin_clock_usd_price_value * bitcoin_clock_krw_usd_rate_value) -
+             1.0) * 100.0;
+        bitcoin_clock_kimchi_premium =
+            String(premium >= 0.0 ? "+" : "") + String(premium, 2) + "%";
+    }
+
+    if (bitcoinClockRequestDue(mClockGlobalIndicatorUpdate,
+                               mClockGlobalIndicatorAttempt,
+                               BITCOIN_CLOCK_INDICATOR_REFRESH_MS)) {
+        mClockGlobalIndicatorAttempt = millis();
+        HTTPClient http;
+        http.setTimeout(5000);
+        http.begin(getBitcoinClockGlobalAPI);
+        const int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            StaticJsonDocument<64> filter;
+            filter["data"]["market_cap_percentage"]["btc"] = true;
+            StaticJsonDocument<128> doc;
+            DeserializationError error = deserializeJson(
+                doc,
+                http.getString(),
+                DeserializationOption::Filter(filter));
+            const double dominance = doc["data"]["market_cap_percentage"]["btc"] | 0.0;
+            if (!error && dominance > 0.0) {
+                bitcoin_clock_btc_dominance = String(dominance, 1) + "%";
+                mClockGlobalIndicatorUpdate = millis();
+            } else if (error) {
+                Serial.printf("[CLOCK] CoinGecko global JSON error: %s\n", error.c_str());
+            } else {
+                Serial.println("[CLOCK] CoinGecko response did not contain BTC dominance");
+            }
+        } else {
+            Serial.printf("[CLOCK] CoinGecko global request failed: HTTP %d\n", httpCode);
+        }
+        http.end();
+    }
+
+    if (bitcoinClockRequestDue(mClockFearGreedUpdate,
+                               mClockFearGreedAttempt,
+                               BITCOIN_CLOCK_INDICATOR_REFRESH_MS)) {
+        mClockFearGreedAttempt = millis();
+        HTTPClient http;
+        http.setTimeout(5000);
+        http.begin(getBitcoinClockFearGreedAPI);
+        const int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            StaticJsonDocument<64> filter;
+            filter["data"][0]["value"] = true;
+            StaticJsonDocument<96> doc;
+            DeserializationError error = deserializeJson(
+                doc,
+                http.getString(),
+                DeserializationOption::Filter(filter));
+            const char* fearGreed = doc["data"][0]["value"] | "";
+            if (!error && fearGreed[0] != '\0') {
+                bitcoin_clock_fear_greed_index = fearGreed;
+                mClockFearGreedUpdate = millis();
+            } else if (error) {
+                Serial.printf("[CLOCK] Fear & Greed JSON error: %s\n", error.c_str());
+            } else {
+                Serial.println("[CLOCK] Fear & Greed response did not contain an index");
+            }
+        } else {
+            Serial.printf("[CLOCK] Fear & Greed request failed: HTTP %d\n", httpCode);
+        }
         http.end();
     }
 }
@@ -490,7 +662,12 @@ bitcoin_clock_data getBitcoinClockData(void)
   updateBitcoinClockPrice();
   data.btcPriceUsd = bitcoin_clock_usd_price;
   data.btcPriceKrw = bitcoin_clock_krw_price;
+  data.btcPriceKrwFull = bitcoin_clock_krw_price_full;
   data.currentTime = getTime();
+  data.krwUsdRate = bitcoin_clock_krw_usd_rate;
+  data.kimchiPremium = bitcoin_clock_kimchi_premium;
+  data.btcDominance = bitcoin_clock_btc_dominance;
+  data.fearGreedIndex = bitcoin_clock_fear_greed_index;
   return data;
 }
 

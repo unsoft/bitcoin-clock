@@ -19,6 +19,9 @@
 #define getBTCAPI "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usdt"
 #define getBitcoinClockPriceAPI "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
 #define getBitcoinClockKrwPriceAPI "https://api.upbit.com/v1/ticker?markets=KRW-BTC"
+#define getBitcoinClockKrwUsdRateAPI "https://api.frankfurter.dev/v2/rate/usd/krw"
+#define getBitcoinClockGlobalAPI "https://api.coingecko.com/api/v3/global"
+#define getBitcoinClockFearGreedAPI "https://api.alternative.me/fng/?limit=1&format=json"
 
 #define UPDATE_BTC_min   1
 
@@ -95,7 +98,12 @@ typedef struct {
   String blockHeight;
   String btcPriceUsd;
   String btcPriceKrw;
+  String btcPriceKrwFull;
   String currentTime;
+  String krwUsdRate;
+  String kimchiPremium;
+  String btcDominance;
+  String fearGreedIndex;
 }bitcoin_clock_data;
 
 typedef struct {

@@ -35,6 +35,8 @@ int renderedPage = -1;
 int renderedTileCount = -1;
 int renderedDigitCapacity = -1;
 String renderedValue;
+String renderedFooterInfo;
+String renderedFooterWonPrice;
 bool renderedLabelVisible = false;
 bool renderedCurrencyVisible = false;
 
@@ -68,17 +70,65 @@ void drawBoldLine(int x0, int y0, int x1, int y1, uint16_t color)
     tft.drawLine(x0 + offset, y0, x1 + offset, y1, color);
 }
 
-void drawFooter(uint8_t page)
+String formatPriceWithCommas(const String& price)
+{
+  String formatted;
+  const int firstGroupLength = price.length() % 3;
+  for (int i = 0; i < price.length(); ++i)
+  {
+    if (i > 0 && (i - firstGroupLength) % 3 == 0)
+      formatted += ',';
+    formatted += price[i];
+  }
+  return formatted;
+}
+
+void drawFooter(uint8_t page, const String& info, const String& wonPrice)
 {
   const int centerX = SCREEN_WIDTH / 2;
-  tft.drawFastHLine(centerX - 65, 137, 46, DIM_GOLD);
-  tft.drawFastHLine(centerX + 19, 137, 46, DIM_GOLD);
-  tft.setTextColor(GOLD, BLACK);
+  tft.fillRect(10, 108, SCREEN_WIDTH - 20, 25, BLACK);
+  tft.setTextColor(DIM_GOLD, BLACK);
   tft.setTextDatum(MC_DATUM);
-  tft.setTextFont(4);
-  tft.drawString("BITCOIN CLOCK", centerX, 120);
-  tft.setTextFont(1);
-  tft.drawString("mini", centerX, 143);
+  tft.setTextFont(2);
+  if (wonPrice.isEmpty())
+  {
+    tft.drawString(info, centerX, 120);
+  }
+  else
+  {
+    const String formattedWonPrice = formatPriceWithCommas(wonPrice);
+    const int infoWidth = tft.textWidth(info, 2);
+    const int wonPriceWidth = tft.textWidth(formattedWonPrice, 2);
+    constexpr int WON_SYMBOL_WIDTH = 14;
+    constexpr int ITEM_GAP = 3;
+    const int totalWidth = infoWidth + ITEM_GAP + WON_SYMBOL_WIDTH + ITEM_GAP + wonPriceWidth;
+    const int startX = centerX - totalWidth / 2;
+    const int symbolCenterX = startX + infoWidth + ITEM_GAP + WON_SYMBOL_WIDTH / 2;
+    const int symbolCenterY = 120;
+
+    tft.setTextDatum(TL_DATUM);
+    tft.drawString(info, startX, 112);
+    tft.drawLine(symbolCenterX - 5, symbolCenterY - 7,
+                 symbolCenterX - 2, symbolCenterY + 7, DIM_GOLD);
+    tft.drawLine(symbolCenterX - 2, symbolCenterY + 7,
+                 symbolCenterX, symbolCenterY - 1, DIM_GOLD);
+    tft.drawLine(symbolCenterX, symbolCenterY - 1,
+                 symbolCenterX + 2, symbolCenterY + 7, DIM_GOLD);
+    tft.drawLine(symbolCenterX + 2, symbolCenterY + 7,
+                 symbolCenterX + 5, symbolCenterY - 7, DIM_GOLD);
+    tft.drawFastHLine(symbolCenterX - 7, symbolCenterY - 3, 14, DIM_GOLD);
+    tft.drawFastHLine(symbolCenterX - 7, symbolCenterY + 2, 14, DIM_GOLD);
+    tft.drawString(formattedWonPrice,
+                   symbolCenterX + WON_SYMBOL_WIDTH / 2 + ITEM_GAP,
+                   112);
+    tft.setTextDatum(MC_DATUM);
+  }
+
+  tft.drawFastHLine(16, 143, 62, DIM_GOLD);
+  tft.drawFastHLine(SCREEN_WIDTH - 78, 143, 62, DIM_GOLD);
+  tft.setTextColor(GOLD, BLACK);
+  tft.setTextFont(2);
+  tft.drawString("BITCOIN CLOCK", centerX, 143);
 
   tft.setTextColor(DIM_GOLD, BLACK);
   tft.setTextFont(1);
@@ -103,8 +153,10 @@ void drawPage(const char* line1,
               int page,
               bool price,
               bool time,
+              const String& footerInfo,
               const char* priceUnit = "",
-              bool wonSign = false)
+              bool wonSign = false,
+              const String& footerWonPrice = "")
 {
   String digits = value;
   if (price)
@@ -207,13 +259,17 @@ void drawPage(const char* line1,
     }
   }
 
-  if (redrawLayout)
-    drawFooter(page);
+  if (redrawLayout ||
+      footerInfo != renderedFooterInfo ||
+      footerWonPrice != renderedFooterWonPrice)
+    drawFooter(page, footerInfo, footerWonPrice);
 
   renderedPage = page;
   renderedTileCount = tileCount;
   renderedDigitCapacity = digitCapacity;
   renderedValue = digits;
+  renderedFooterInfo = footerInfo;
+  renderedFooterWonPrice = footerWonPrice;
   renderedLabelVisible = showLabel;
   renderedCurrencyVisible = showCurrency;
 }
@@ -221,19 +277,28 @@ void drawPage(const char* line1,
 void drawBlockPage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("CURRENT", "BLOCK", data.blockHeight, 2, false, false);
+  const String footerInfo =
+      "$" + formatPriceWithCommas(data.btcPriceUsd) +
+      " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
+  drawPage("CURRENT", "BLOCK", data.blockHeight, 2, false, false,
+           footerInfo);
 }
 
 void drawDollarPricePage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("BTC", "USD", data.btcPriceUsd, 0, true, false, "$");
+  const String footerInfo =
+      "BLOCK " + formatPriceWithCommas(data.blockHeight) +
+      " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
+  drawPage("BTC", "USD", data.btcPriceUsd, 0, true, false, footerInfo, "$");
 }
 
 void drawWonPricePage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
-  drawPage("BTC", "KRW", data.btcPriceKrw, 1, true, false, "", true);
+  const String footerInfo =
+      "KRW-USD " + data.krwUsdRate + " / Premium " + data.kimchiPremium;
+  drawPage("BTC", "KRW", data.btcPriceKrw, 1, true, false, footerInfo, "", true);
 }
 
 void drawTimePage(unsigned long)
@@ -241,7 +306,10 @@ void drawTimePage(unsigned long)
   const bitcoin_clock_data data = getBitcoinClockData();
   String time = data.currentTime;
   time.replace(":", "");
-  drawPage("LOCAL", "TIME", time, 3, false, true);
+  const String footerInfo =
+      "$" + formatPriceWithCommas(data.btcPriceUsd) +
+      " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
+  drawPage("LOCAL", "TIME", time, 3, false, true, footerInfo);
 }
 
 void initDisplay()
