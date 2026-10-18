@@ -20,6 +20,9 @@ constexpr int TILE_HEIGHT = 92;
 constexpr int TILE_GAP = 3;
 constexpr int SIDE_MARGIN = 8;
 constexpr int VALUE_TILE_COUNT = 7;
+constexpr int SUMMARY_TILE_HEIGHT = 64;
+constexpr int SUMMARY_FIRST_ROW_Y = 16;
+constexpr int SUMMARY_SECOND_ROW_Y = 90;
 constexpr uint8_t BACKLIGHT_PWM_CHANNEL = 7;
 constexpr uint8_t BACKLIGHT_LEVELS[] = {0, 64, 128, 192, 255};
 constexpr uint8_t BACKLIGHT_LEVEL_COUNT = sizeof(BACKLIGHT_LEVELS) / sizeof(BACKLIGHT_LEVELS[0]);
@@ -37,13 +40,19 @@ int renderedDigitCapacity = -1;
 String renderedValue;
 String renderedFooterInfo;
 String renderedFooterWonPrice;
+String renderedSummaryUsdtPrice;
+String renderedSummaryKrwPrice;
+bool renderedSummaryUsdtLabelVisible = false;
+bool renderedSummaryUsdtCurrencyVisible = false;
+bool renderedSummaryKrwLabelVisible = false;
+bool renderedSummaryKrwCurrencyVisible = false;
 bool renderedLabelVisible = false;
 bool renderedCurrencyVisible = false;
 
-void drawTile(int x, int width)
+void drawTile(int x, int width, int y = TILE_Y, int height = TILE_HEIGHT)
 {
-  tft.drawRoundRect(x, TILE_Y, width, TILE_HEIGHT, 4, GOLD);
-  tft.drawRoundRect(x + 2, TILE_Y + 2, width - 4, TILE_HEIGHT - 4, 3, DIM_GOLD);
+  tft.drawRoundRect(x, y, width, height, 4, GOLD);
+  tft.drawRoundRect(x + 2, y + 2, width - 4, height - 4, 3, DIM_GOLD);
 }
 
 void drawLabel(int x, int width, const char* line1, const char* line2)
@@ -274,6 +283,125 @@ void drawPage(const char* line1,
   renderedCurrencyVisible = showCurrency;
 }
 
+void drawSummaryPriceRow(int y,
+                         const String& value,
+                         const char* labelLine1,
+                         const char* labelLine2,
+                         const char* priceUnit,
+                         bool wonSign,
+                         String& renderedPrice,
+                         bool& renderedLabel,
+                         bool& renderedCurrency,
+                         bool redrawLayout)
+{
+  String digits = value;
+  digits.replace(",", "");
+  if (digits.isEmpty())
+    digits = "--";
+
+  bool showLabel = true;
+  bool showCurrency = true;
+  int digitCapacity = VALUE_TILE_COUNT - 2;
+  if (digits.length() > digitCapacity)
+  {
+    showCurrency = false;
+    ++digitCapacity;
+  }
+  if (digits.length() > digitCapacity)
+  {
+    showLabel = false;
+    ++digitCapacity;
+  }
+  if (digits.length() > digitCapacity)
+    digits = "-------";
+
+  const bool rowLayoutChanged = redrawLayout ||
+                                showLabel != renderedLabel ||
+                                showCurrency != renderedCurrency;
+  const int availableWidth = SCREEN_WIDTH - SIDE_MARGIN * 2;
+  const int tileWidth = (availableWidth - (VALUE_TILE_COUNT - 1) * TILE_GAP) /
+                        VALUE_TILE_COUNT;
+  const int rowWidth = VALUE_TILE_COUNT * tileWidth +
+                       (VALUE_TILE_COUNT - 1) * TILE_GAP;
+  const int startX = (SCREEN_WIDTH - rowWidth) / 2;
+
+  if (rowLayoutChanged)
+    tft.fillRect(SIDE_MARGIN, y - 2, availableWidth, SUMMARY_TILE_HEIGHT + 4, BLACK);
+
+  int tileIndex = 0;
+  if (showLabel)
+  {
+    const int x = startX + tileIndex * (tileWidth + TILE_GAP);
+    if (rowLayoutChanged)
+    {
+      drawTile(x, tileWidth, y, SUMMARY_TILE_HEIGHT);
+      tft.setTextColor(GOLD, BLACK);
+      tft.setTextDatum(MC_DATUM);
+      tft.setTextFont(1);
+      tft.drawString(labelLine1, x + tileWidth / 2, y + 25);
+      tft.drawString(labelLine2, x + tileWidth / 2, y + 41);
+    }
+    ++tileIndex;
+  }
+
+  if (showCurrency)
+  {
+    const int x = startX + tileIndex * (tileWidth + TILE_GAP);
+    if (rowLayoutChanged)
+    {
+      drawTile(x, tileWidth, y, SUMMARY_TILE_HEIGHT);
+      tft.setTextColor(WHITE, BLACK);
+      tft.setTextDatum(MC_DATUM);
+      if (wonSign)
+      {
+        const int centerX = x + tileWidth / 2;
+        const int centerY = y + SUMMARY_TILE_HEIGHT / 2;
+        drawBoldLine(centerX - 12, centerY - 10, centerX - 7, centerY + 10, WHITE);
+        drawBoldLine(centerX - 7, centerY + 10, centerX, centerY - 1, WHITE);
+        drawBoldLine(centerX, centerY - 1, centerX + 7, centerY + 10, WHITE);
+        drawBoldLine(centerX + 7, centerY + 10, centerX + 12, centerY - 10, WHITE);
+        tft.fillRect(centerX - 14, centerY - 5, 28, 3, WHITE);
+        tft.fillRect(centerX - 14, centerY + 3, 28, 3, WHITE);
+      }
+      else
+      {
+        tft.setTextFont(4);
+        tft.drawString(priceUnit, x + tileWidth / 2, y + SUMMARY_TILE_HEIGHT / 2);
+      }
+    }
+    ++tileIndex;
+  }
+
+  const int firstDigitX = startX + tileIndex * (tileWidth + TILE_GAP);
+  for (int i = 0; i < digitCapacity; ++i)
+  {
+    const int x = firstDigitX + i * (tileWidth + TILE_GAP);
+    const char digit = i < digits.length() ? digits[i] : ' ';
+    if (rowLayoutChanged)
+      drawTile(x, tileWidth, y, SUMMARY_TILE_HEIGHT);
+
+    if (rowLayoutChanged || i >= renderedPrice.length() || renderedPrice[i] != digit)
+    {
+      tft.fillRect(x + 4,
+                   y + 4,
+                   tileWidth - 8,
+                   SUMMARY_TILE_HEIGHT - 8,
+                   BLACK);
+      tft.setTextColor(WHITE, BLACK);
+      tft.setTextDatum(MC_DATUM);
+      tft.setTextFont(7);
+      if (digit != ' ')
+        tft.drawString(String(digit),
+                       x + tileWidth / 2,
+                       y + SUMMARY_TILE_HEIGHT / 2);
+    }
+  }
+
+  renderedPrice = digits;
+  renderedLabel = showLabel;
+  renderedCurrency = showCurrency;
+}
+
 void drawBlockPage(unsigned long)
 {
   const bitcoin_clock_data data = getBitcoinClockData();
@@ -290,7 +418,7 @@ void drawDollarPricePage(unsigned long)
   const String footerInfo =
       "BLOCK " + formatPriceWithCommas(data.blockHeight) +
       " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
-  drawPage("BTC", "USD", data.btcPriceUsd, 0, true, false, footerInfo, "$");
+  drawPage("BTC", "USDT", data.btcPriceUsd, 0, true, false, footerInfo, "$");
 }
 
 void drawWonPricePage(unsigned long)
@@ -310,6 +438,43 @@ void drawTimePage(unsigned long)
       "$" + formatPriceWithCommas(data.btcPriceUsd) +
       " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
   drawPage("LOCAL", "TIME", time, 3, false, true, footerInfo);
+}
+
+void drawPriceSummaryPage(unsigned long)
+{
+  constexpr int PAGE = 4;
+  if (currentDisplayDriver->current_cyclic_screen != PAGE)
+    return;
+
+  const bitcoin_clock_data data = getBitcoinClockData();
+  const bool redrawLayout = renderedPage != PAGE;
+  if (redrawLayout)
+  {
+    tft.fillScreen(BLACK);
+    drawFrame();
+  }
+
+  drawSummaryPriceRow(SUMMARY_FIRST_ROW_Y,
+                      data.btcPriceUsd,
+                      "BTC",
+                      "USDT",
+                      "$",
+                      false,
+                      renderedSummaryUsdtPrice,
+                      renderedSummaryUsdtLabelVisible,
+                      renderedSummaryUsdtCurrencyVisible,
+                      redrawLayout);
+  drawSummaryPriceRow(SUMMARY_SECOND_ROW_Y,
+                      data.btcPriceKrw,
+                      "BTC",
+                      "KRW",
+                      "",
+                      true,
+                      renderedSummaryKrwPrice,
+                      renderedSummaryKrwLabelVisible,
+                      renderedSummaryKrwCurrencyVisible,
+                      redrawLayout);
+  renderedPage = PAGE;
 }
 
 void initDisplay()
@@ -383,7 +548,8 @@ CyclicScreenFunction pages[] = {
     drawDollarPricePage,
     drawWonPricePage,
     drawBlockPage,
-    drawTimePage};
+    drawTimePage,
+    drawPriceSummaryPage};
 }
 
 void drawBitcoinClockWifiFailureScreen()
