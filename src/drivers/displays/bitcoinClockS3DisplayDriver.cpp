@@ -14,6 +14,7 @@ constexpr int SCREEN_HEIGHT = 170;
 constexpr uint16_t GOLD = 0xDEB2;
 constexpr uint16_t DIM_GOLD = 0x7B6A;
 constexpr uint16_t WHITE = TFT_WHITE;
+constexpr uint16_t STALE_VALUE = TFT_DARKGREY;
 constexpr uint16_t BLACK = TFT_BLACK;
 constexpr int TILE_Y = 12;
 constexpr int TILE_HEIGHT = 92;
@@ -46,8 +47,11 @@ bool renderedSummaryUsdtLabelVisible = false;
 bool renderedSummaryUsdtCurrencyVisible = false;
 bool renderedSummaryKrwLabelVisible = false;
 bool renderedSummaryKrwCurrencyVisible = false;
+bool renderedSummaryUsdtFresh = false;
+bool renderedSummaryKrwFresh = false;
 bool renderedLabelVisible = false;
 bool renderedCurrencyVisible = false;
+bool renderedDigitFresh = false;
 
 void drawTile(int x, int width, int y = TILE_Y, int height = TILE_HEIGHT)
 {
@@ -64,10 +68,10 @@ void drawLabel(int x, int width, const char* line1, const char* line2)
   tft.drawString(line2, x + width / 2, TILE_Y + 53);
 }
 
-void drawDigit(int x, int width, char digit)
+void drawDigit(int x, int width, char digit, uint16_t color)
 {
   tft.fillRect(x + 4, TILE_Y + 4, width - 8, TILE_HEIGHT - 8, BLACK);
-  tft.setTextColor(WHITE, BLACK);
+  tft.setTextColor(color, BLACK);
   tft.setTextDatum(MC_DATUM);
   tft.setTextFont(7);
   tft.drawString(String(digit), x + width / 2, TILE_Y + TILE_HEIGHT / 2 + 1);
@@ -165,7 +169,8 @@ void drawPage(const char* line1,
               const String& footerInfo,
               const char* priceUnit = "",
               bool wonSign = false,
-              const String& footerWonPrice = "")
+              const String& footerWonPrice = "",
+              bool valueFresh = true)
 {
   String digits = value;
   if (price)
@@ -249,8 +254,9 @@ void drawPage(const char* line1,
       drawTile(x, tileWidth);
 
     const char digit = i < digits.length() ? digits[i] : ' ';
-    if (redrawLayout || i >= renderedValue.length() || renderedValue[i] != digit)
-      drawDigit(x, tileWidth, digit);
+    if (redrawLayout || i >= renderedValue.length() || renderedValue[i] != digit ||
+        valueFresh != renderedDigitFresh)
+      drawDigit(x, tileWidth, digit, valueFresh ? WHITE : STALE_VALUE);
 
     x += tileWidth + TILE_GAP;
 
@@ -281,6 +287,7 @@ void drawPage(const char* line1,
   renderedFooterWonPrice = footerWonPrice;
   renderedLabelVisible = showLabel;
   renderedCurrencyVisible = showCurrency;
+  renderedDigitFresh = valueFresh;
 }
 
 void drawSummaryPriceRow(int y,
@@ -289,9 +296,11 @@ void drawSummaryPriceRow(int y,
                          const char* labelLine2,
                          const char* priceUnit,
                          bool wonSign,
+                         bool valueFresh,
                          String& renderedPrice,
                          bool& renderedLabel,
                          bool& renderedCurrency,
+                         bool& renderedFresh,
                          bool redrawLayout)
 {
   String digits = value;
@@ -380,14 +389,15 @@ void drawSummaryPriceRow(int y,
     if (rowLayoutChanged)
       drawTile(x, tileWidth, y, SUMMARY_TILE_HEIGHT);
 
-    if (rowLayoutChanged || i >= renderedPrice.length() || renderedPrice[i] != digit)
+    if (rowLayoutChanged || i >= renderedPrice.length() || renderedPrice[i] != digit ||
+        valueFresh != renderedFresh)
     {
       tft.fillRect(x + 4,
                    y + 4,
                    tileWidth - 8,
                    SUMMARY_TILE_HEIGHT - 8,
                    BLACK);
-      tft.setTextColor(WHITE, BLACK);
+      tft.setTextColor(valueFresh ? WHITE : STALE_VALUE, BLACK);
       tft.setTextDatum(MC_DATUM);
       tft.setTextFont(7);
       if (digit != ' ')
@@ -400,6 +410,7 @@ void drawSummaryPriceRow(int y,
   renderedPrice = digits;
   renderedLabel = showLabel;
   renderedCurrency = showCurrency;
+  renderedFresh = valueFresh;
 }
 
 void drawBlockPage(unsigned long)
@@ -409,7 +420,7 @@ void drawBlockPage(unsigned long)
       "$" + formatPriceWithCommas(data.btcPriceUsd) +
       " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
   drawPage("CURRENT", "BLOCK", data.blockHeight, 2, false, false,
-           footerInfo);
+           footerInfo, "", false, "", data.blockHeightIsFresh);
 }
 
 void drawDollarPricePage(unsigned long)
@@ -418,7 +429,8 @@ void drawDollarPricePage(unsigned long)
   const String footerInfo =
       "BLOCK " + formatPriceWithCommas(data.blockHeight) +
       " / BTC.D " + data.btcDominance + " / F&G " + data.fearGreedIndex;
-  drawPage("BTC", "USDT", data.btcPriceUsd, 0, true, false, footerInfo, "$");
+  drawPage("BTC", "USDT", data.btcPriceUsd, 0, true, false, footerInfo, "$",
+           false, "", data.btcPriceUsdIsFresh);
 }
 
 void drawWonPricePage(unsigned long)
@@ -426,7 +438,8 @@ void drawWonPricePage(unsigned long)
   const bitcoin_clock_data data = getBitcoinClockData();
   const String footerInfo =
       "KRW-USD " + data.krwUsdRate + " / Premium " + data.kimchiPremium;
-  drawPage("BTC", "KRW", data.btcPriceKrw, 1, true, false, footerInfo, "", true);
+  drawPage("BTC", "KRW", data.btcPriceKrw, 1, true, false, footerInfo, "", true,
+           "", data.btcPriceKrwIsFresh);
 }
 
 void drawTimePage(unsigned long)
@@ -460,9 +473,11 @@ void drawPriceSummaryPage(unsigned long)
                       "USDT",
                       "$",
                       false,
+                      data.btcPriceUsdIsFresh,
                       renderedSummaryUsdtPrice,
                       renderedSummaryUsdtLabelVisible,
                       renderedSummaryUsdtCurrencyVisible,
+                      renderedSummaryUsdtFresh,
                       redrawLayout);
   drawSummaryPriceRow(SUMMARY_SECOND_ROW_Y,
                       data.btcPriceKrw,
@@ -470,9 +485,11 @@ void drawPriceSummaryPage(unsigned long)
                       "KRW",
                       "",
                       true,
+                      data.btcPriceKrwIsFresh,
                       renderedSummaryKrwPrice,
                       renderedSummaryKrwLabelVisible,
                       renderedSummaryKrwCurrencyVisible,
+                      renderedSummaryKrwFresh,
                       redrawLayout);
   renderedPage = PAGE;
 }

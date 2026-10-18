@@ -660,6 +660,20 @@ bitcoin_clock_data getBitcoinClockData(void)
   bitcoin_clock_data data;
   data.blockHeight = getBlockHeight();
   updateBitcoinClockPrice();
+  const unsigned long now = millis();
+  const bool connected = WiFi.status() == WL_CONNECTED;
+  data.btcPriceUsdIsFresh =
+      connected && mClockUsdPriceUpdate != 0 &&
+      now - mClockUsdPriceUpdate <=
+          BITCOIN_CLOCK_PRICE_REFRESH_MS + BITCOIN_CLOCK_RETRY_MS;
+  data.btcPriceKrwIsFresh =
+      connected && mClockKrwPriceUpdate != 0 &&
+      now - mClockKrwPriceUpdate <=
+          BITCOIN_CLOCK_PRICE_REFRESH_MS + BITCOIN_CLOCK_RETRY_MS;
+  data.blockHeightIsFresh =
+      connected && mHeightUpdate != 0 &&
+      now - mHeightUpdate <=
+          UPDATE_Height_min * 60 * 1000UL + BITCOIN_CLOCK_RETRY_MS;
   data.btcPriceUsd = bitcoin_clock_usd_price;
   data.btcPriceKrw = bitcoin_clock_krw_price;
   data.btcPriceKrwFull = bitcoin_clock_krw_price_full;

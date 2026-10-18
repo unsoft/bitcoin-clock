@@ -99,6 +99,9 @@ typedef struct {
   String btcPriceUsd;
   String btcPriceKrw;
   String btcPriceKrwFull;
+  bool btcPriceUsdIsFresh;
+  bool btcPriceKrwIsFresh;
+  bool blockHeightIsFresh;
   String currentTime;
   String krwUsdRate;
   String kimchiPremium;
